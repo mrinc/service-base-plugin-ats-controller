@@ -245,6 +245,7 @@ export class Service extends ServicesBase<
       return undefined;
 
     let data = asString.split("[")[1].split("]")[0].split(":");
+    self.log.info("Known state: {state}", { state: asString });
     switch (data[0]) {
       case "STATE": {
         data.splice(0, 1);
