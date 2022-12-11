@@ -66,9 +66,14 @@ export class Service extends ServicesBase<
     power_red_house: false,
 
     last_db_power: 0,
+    lastPing: 0,
+
+    counter_last_db_power: Number.MIN_VALUE,
+    counter_last_lastPing: Number.MIN_VALUE
   };
-  private lastPing: number = 0;
+  //private lastPing: number = 0;
   private pingTimer: NodeJS.Timer | null = null;
+  private counterTimer: NodeJS.Timer | null = null;
   constructor(
     pluginName: string,
     cwd: string,
@@ -99,6 +104,7 @@ export class Service extends ServicesBase<
     if (this._geniContactorTimer !== null)
       clearInterval(this._geniContactorTimer);
     if (this.pingTimer !== null) clearInterval(this.pingTimer);
+    if (this.counterTimer !== null) clearInterval(this.counterTimer);
   }
 
   private async setState(systemState: SysState) {
@@ -257,14 +263,18 @@ export class Service extends ServicesBase<
     await this.sendContactorUpdate(true);
     const self = this;
     this.pingTimer = setInterval(async () => {
-      if (self.lastPing === 0) return;
+      if (self.knownStates.lastPing === 0) return;
       const now = new Date().getTime();
 
-      if (now - self.lastPing > 15 * 60 * 1000) {
+      if (now - self.knownStates.lastPing > 60 * 1000) {
         // reset port
         self.log.fatal("Port locked. Force restart");
       }
     }, 60000);
+    this.counterTimer = setInterval(async () => {
+      self.knownStates.counter_last_db_power--;
+      self.knownStates.counter_last_lastPing--;
+    }, 1000);
   }
 
   private async parseData(asString: string): Promise<any> {
@@ -277,7 +287,8 @@ export class Service extends ServicesBase<
     switch (data[0]) {
       case "PING":
         {
-          self.lastPing = new Date().getTime();
+          self.knownStates.lastPing = new Date().getTime();
+          self.knownStates.counter_last_lastPing = 0;
           self.log.info("PING Received: ");
         }
         break;
@@ -396,6 +407,7 @@ export class Service extends ServicesBase<
 
     if (this.knownStates.power_DB === true) {
       this.knownStates.last_db_power = now;
+      this.knownStates.counter_last_db_power = 0;
     }
 
     this.log.debug(JSON.stringify(this.knownStates));
