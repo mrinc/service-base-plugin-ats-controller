@@ -65,6 +65,8 @@ export class Service extends ServicesBase<
 
     last_db_power: 0,
   };
+  private lastPing: number = 0;
+  private pingTimer: NodeJS.Timer | null = null;
   constructor(
     pluginName: string,
     cwd: string,
@@ -75,6 +77,16 @@ export class Service extends ServicesBase<
     this._serialPort = new serialPort(this);
     this._gpio = new raspPIGPIO(this);
     this._fastify = new fastify(this);
+    const self = this;
+    this.pingTimer = setInterval(async () => {
+      if (self.lastPing === 0) return;
+      const now = new Date().getTime();
+
+      if (now - self.lastPing > 15 * 60 * 1000) {
+        // reset port
+        self.log.fatal("Port locked. Force restart");
+      }
+    }, 60000);
   }
 
   private _geniContactorTimer: NodeJS.Timer | null = null;
@@ -247,6 +259,11 @@ export class Service extends ServicesBase<
     let data = asString.split("[")[1].split("]")[0].split(":");
     self.log.info("Known state: {state}", { state: asString });
     switch (data[0]) {
+      case "PING":
+        {
+          self.lastPing = new Date().getTime();
+        }
+        return;
       case "STATE": {
         data.splice(0, 1);
         let rewritten = data
