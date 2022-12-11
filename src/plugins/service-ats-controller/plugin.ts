@@ -9,6 +9,8 @@ import { raspPIGPIO } from "@bettercorp/service-base-plugin-raspverry-pi-gpio";
 import { Tools } from "@bettercorp/tools";
 import { fastify } from "@bettercorp/service-base-plugin-web-server";
 
+import { tx2 } from "tx2";
+
 export interface ParsedStateItem {
   input: number;
   connected: boolean;
@@ -26,9 +28,9 @@ export interface ParsedState {
 }
 
 export enum SysState {
-  Unknown,
-  Primary,
-  Secondary,
+  Unknown = "Unknown",
+  Primary = "Primary",
+  Secondary = "Secondary",
 }
 
 export class Service extends ServicesBase<
@@ -43,6 +45,7 @@ export class Service extends ServicesBase<
   private _gpio!: raspPIGPIO;
   private _fastify!: fastify;
   //private knownStates_old: any = null;
+  private metrics: any = {};
   private knownStates = {
     systemBusy: false,
     systemState: SysState.Unknown,
@@ -77,14 +80,26 @@ export class Service extends ServicesBase<
     this._serialPort = new serialPort(this);
     this._gpio = new raspPIGPIO(this);
     this._fastify = new fastify(this);
+
+    const self = this;
+    for (let key of Object.keys(this.knownStates)) {
+      this.metrics[key] = tx2.metric({
+        name: key,
+        value: () => {
+          if (Tools.isBoolean((self.knownStates as any)[key])) {
+            return (self.knownStates as any)[key] == true ? 1 : 0;
+          }
+          return (self.knownStates as any)[key];
+        },
+      });
+    }
   }
 
   private _geniContactorTimer: NodeJS.Timer | null = null;
   public override dispose(): void {
     if (this._geniContactorTimer !== null)
       clearInterval(this._geniContactorTimer);
-    if (this.pingTimer !== null)
-      clearInterval(this.pingTimer);
+    if (this.pingTimer !== null) clearInterval(this.pingTimer);
   }
 
   private async setState(systemState: SysState) {
@@ -264,36 +279,38 @@ export class Service extends ServicesBase<
       case "PING":
         {
           self.lastPing = new Date().getTime();
-          self.log.info('PING Received: ')
+          self.log.info("PING Received: ");
         }
         break;
-      case "STATE": {
-        data.splice(0, 1);
-        let rewritten = data
-          .map((x) => Number.parseInt(x))
-          .map((x, index) => {
-            return {
-              input: index + 1,
-              connected: x > 0,
-              power: x == 2,
-            };
+      case "STATE":
+        {
+          data.splice(0, 1);
+          let rewritten = data
+            .map((x) => Number.parseInt(x))
+            .map((x, index) => {
+              return {
+                input: index + 1,
+                connected: x > 0,
+                power: x == 2,
+              };
+            });
+          let output: ParsedState = {
+            primary: rewritten[0],
+            secondary: rewritten[1],
+            db_in: rewritten[2],
+            ups_out: rewritten[3],
+            blue_core: rewritten[4],
+            db_red: rewritten[4],
+            red: rewritten[6],
+            blue_house: rewritten[7],
+          };
+          self.log.debug("{rewritten}", {
+            rewritten: JSON.stringify(rewritten),
           });
-        let output: ParsedState = {
-          primary: rewritten[0],
-          secondary: rewritten[1],
-          db_in: rewritten[2],
-          ups_out: rewritten[3],
-          blue_core: rewritten[4],
-          db_red: rewritten[4],
-          red: rewritten[6],
-          blue_house: rewritten[7],
-        };
-        self.log.debug("{rewritten}", {
-          rewritten: JSON.stringify(rewritten),
-        });
-        self.log.debug("{output}", { output: JSON.stringify(output) });
-        await self.handleParsedData(output);
-      } break;
+          self.log.debug("{output}", { output: JSON.stringify(output) });
+          await self.handleParsedData(output);
+        }
+        break;
     }
     await this.checkState();
   }
@@ -347,7 +364,25 @@ export class Service extends ServicesBase<
 
   private async handleParsedData(data: ParsedState) {
     const self = this;
-    self.knownStates.power_UPS = data.ups_out.power;
+
+    if (
+      !this.knownStates.power_secondary &&
+      data.secondary.power &&
+      !this.knownStates.contactor_generator
+    ) {
+      setTimeout(async () => {
+        if (
+          !this.knownStates.power_secondary ||
+          this.knownStates.contactor_generator
+        )
+          return;
+
+        self.knownStates.contactor_generator = true;
+        await self.sendContactorUpdate(true);
+      }, 30000);
+    }
+
+    this.knownStates.power_UPS = data.ups_out.power;
     this.knownStates.power_blue_house = data.blue_house.power;
     this.knownStates.power_blue_core = data.blue_core.power;
     this.knownStates.power_DB = data.db_in.power;
@@ -355,15 +390,6 @@ export class Service extends ServicesBase<
     this.knownStates.power_red_house = data.red.power;
     this.knownStates.power_primary = data.primary.power;
     this.knownStates.power_secondary = data.secondary.power;
-
-    if (this.knownStates.power_secondary && !this.knownStates.contactor_generator) {
-      setTimeout(async ()=>{
-        if (!this.knownStates.power_secondary || this.knownStates.contactor_generator) return;
-        
-        self.knownStates.contactor_generator = true;
-        await self.sendContactorUpdate(true);
-      }, 30000)
-    }
 
     //if (this.knownStates_old === null) this.knownStates_old = this.knownStates;
 

@@ -16,6 +16,8 @@ int deviceState[] = {0,0,0,0,0,0,0,0};
 // 1 = DEVICE NO POWER
 // 2 = DEVICE POWER
 
+boolean canOutputStates = false;
+
 void setup() {
   pinMode(A0, INPUT_PULLUP);
   pinMode(A1, INPUT_PULLUP);
@@ -54,6 +56,7 @@ void readData() {
         } else {
           deviceState[chan] = 2;
           deviceStateKeep[chan] = cyclesDeBounce;
+          canOutputStates = true;
         }
       } else {        
         deviceState[chan] = 0;
@@ -124,7 +127,9 @@ void loop() {
   readData();
   //serialOutValues();
   //serialOutMinMax();
-  serialOutStates();
+  if (canOutputStates) {
+    serialOutStates();
+  }
   runPing();
   delay(10);
 }
