@@ -50,9 +50,9 @@ export class Service extends ServicesBase<
     contactor_primary: true,
     contactor_secondary: true,
     contactor_generator: false,
-    contactor_generator_time: 0,
-    contactor_generator_last_warmupTime: 0,
-    contactor_generator_startup_count: 0,
+    //contactor_generator_time: 0,
+    //contactor_generator_last_warmupTime: 0,
+    //contactor_generator_startup_count: 0,
 
     power_primary: false,
     power_secondary: false,
@@ -77,22 +77,14 @@ export class Service extends ServicesBase<
     this._serialPort = new serialPort(this);
     this._gpio = new raspPIGPIO(this);
     this._fastify = new fastify(this);
-    const self = this;
-    this.pingTimer = setInterval(async () => {
-      if (self.lastPing === 0) return;
-      const now = new Date().getTime();
-
-      if (now - self.lastPing > 15 * 60 * 1000) {
-        // reset port
-        self.log.fatal("Port locked. Force restart");
-      }
-    }, 60000);
   }
 
   private _geniContactorTimer: NodeJS.Timer | null = null;
   public override dispose(): void {
     if (this._geniContactorTimer !== null)
       clearInterval(this._geniContactorTimer);
+    if (this.pingTimer !== null)
+      clearInterval(this.pingTimer);
   }
 
   private async setState(systemState: SysState) {
@@ -249,9 +241,19 @@ export class Service extends ServicesBase<
   }
   public override async run(): Promise<void> {
     await this.sendContactorUpdate(true);
+    const self = this;
+    this.pingTimer = setInterval(async () => {
+      if (self.lastPing === 0) return;
+      const now = new Date().getTime();
+
+      if (now - self.lastPing > 15 * 60 * 1000) {
+        // reset port
+        self.log.fatal("Port locked. Force restart");
+      }
+    }, 60000);
   }
 
-  private async parseData(asString: string) {
+  private async parseData(asString: string): Promise<any> {
     const self = this;
     if (asString.indexOf("[") < 0 || asString.indexOf("]") < 0)
       return undefined;
@@ -262,8 +264,9 @@ export class Service extends ServicesBase<
       case "PING":
         {
           self.lastPing = new Date().getTime();
+          self.log.info('PING Received: ')
         }
-        return;
+        break;
       case "STATE": {
         data.splice(0, 1);
         let rewritten = data
@@ -289,9 +292,10 @@ export class Service extends ServicesBase<
           rewritten: JSON.stringify(rewritten),
         });
         self.log.debug("{output}", { output: JSON.stringify(output) });
-        return await self.handleParsedData(output);
-      }
+        await self.handleParsedData(output);
+      } break;
     }
+    await this.checkState();
   }
   private statesOfRelays: Array<{
     pin: number;
@@ -352,6 +356,15 @@ export class Service extends ServicesBase<
     this.knownStates.power_primary = data.primary.power;
     this.knownStates.power_secondary = data.secondary.power;
 
+    if (this.knownStates.power_secondary && !this.knownStates.contactor_generator) {
+      setTimeout(async ()=>{
+        if (!this.knownStates.power_secondary || this.knownStates.contactor_generator) return;
+        
+        self.knownStates.contactor_generator = true;
+        await self.sendContactorUpdate(true);
+      }, 30000)
+    }
+
     //if (this.knownStates_old === null) this.knownStates_old = this.knownStates;
 
     const now = new Date().getTime();
@@ -377,6 +390,5 @@ export class Service extends ServicesBase<
       // log pager duty
       this.log.error("NO POWER!!! ALERT");
     }
-    await this.checkState();
   }
 }
