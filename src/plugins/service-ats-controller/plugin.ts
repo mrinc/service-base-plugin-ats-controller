@@ -8,8 +8,7 @@ import { serialPort } from "@bettercorp/service-base-plugin-serial";
 import { raspPIGPIO } from "@bettercorp/service-base-plugin-raspverry-pi-gpio";
 import { Tools } from "@bettercorp/tools";
 import { fastify } from "@bettercorp/service-base-plugin-web-server";
-
-import { tx2 } from "tx2";
+import * as tx2 from "tx2";
 
 export interface ParsedStateItem {
   input: number;
