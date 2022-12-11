@@ -1,5 +1,5 @@
 {
-  "name": "@bettercorp/service-base-plugin-ats-controller",
+  "name": "@mrinc/service-base-plugin-ats-controller",
   "license": "AGPL-3.0-only",
   "repository": {
     "url": "https://github.com/BetterCorp/service-base-plugin-ats-controller"
