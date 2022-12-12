@@ -109,10 +109,10 @@ export class Service extends ServicesBase<
 
   private async setState(systemState: SysState) {
     if (this.knownStates.systemBusy)
-      return this.log.warn("Cannot change state, busy");
+      return await this.log.warn("Cannot change state, busy");
     this.knownStates.systemState = systemState;
 
-    this.log.warn("set system state: {state}", { state: systemState });
+    await this.log.warn("set system state: {state}", { state: systemState });
     switch (systemState) {
       case SysState.Primary:
         {
@@ -172,17 +172,19 @@ export class Service extends ServicesBase<
           }
 
           if (this.knownStates.power_secondary !== true) {
-            this.log.error("FAILED TO START GENERATOR");
+            await this.log.error("FAILED TO START GENERATOR");
             this.knownStates.contactor_generator = false;
             this.knownStates.contactor_primary = true;
             this.knownStates.contactor_secondary = true;
-            this.log.error("FAILED TO ANY STATE, WAITING ON KNOWLEDGEMENT");
+            await this.log.error(
+              "FAILED TO ANY STATE, WAITING ON KNOWLEDGEMENT"
+            );
             await this.sendContactorUpdate();
             this.knownStates.systemBusy = false;
             return;
           }
 
-          this.log.warn("GENERATOR WARMUP");
+          await this.log.warn("GENERATOR WARMUP");
           await Tools.delay((maxWarmupTime > 10 ? maxWarmupTime : 10) * 1000);
           this.knownStates.contactor_secondary = true;
           await this.sendContactorUpdate();
@@ -196,22 +198,32 @@ export class Service extends ServicesBase<
 
   private async checkState() {
     if (this.knownStates.systemBusy)
-      return this.log.warn("Cannot check state, busy");
-    this.log.warn("checking sys state [{state}]", {
+      return await this.log.warn("Cannot check state, busy");
+    await this.log.warn("checking sys state [{state}]", {
       state: this.knownStates.systemState,
     });
     this.knownStates.systemBusy = true;
     if (this.knownStates.systemState === SysState.Unknown) {
       if (this.knownStates.power_primary) {
+        if (this.knownStates.power_secondary) {
+          this.knownStates.contactor_generator = false;
+          this.knownStates.contactor_primary = false;
+          this.knownStates.contactor_secondary = false;
+          await this.sendContactorUpdate(true);
+          await Tools.delay(5000);
+          this.knownStates.contactor_primary = true;
+          await this.sendContactorUpdate(true);
+          await Tools.delay(5000);
+          this.knownStates.contactor_secondary = true;
+          await this.sendContactorUpdate(true);
+          this.knownStates.systemState = SysState.Primary;
+          this.knownStates.systemBusy = false;
+          return;
+        }
         this.knownStates.contactor_generator = false;
         this.knownStates.contactor_primary = true;
-        this.knownStates.contactor_secondary = false;
-        await this.sendContactorUpdate(true);
-        await Tools.delay(5000);
         this.knownStates.contactor_secondary = true;
         await this.sendContactorUpdate(true);
-        this.knownStates.systemState = SysState.Primary;
-        this.knownStates.systemBusy = false;
         return;
       }
       if (!this.knownStates.power_primary) {
@@ -286,15 +298,20 @@ export class Service extends ServicesBase<
     });
   }
   public override async run(): Promise<void> {
-    await this.sendContactorUpdate(true);
+    //await this.sendContactorUpdate(true);
     const self = this;
     this.pingTimer = setInterval(async () => {
       if (self.knownStates.lastPing === 0) return;
       const now = new Date().getTime();
 
+      if (now - self.knownStates.lastPing > 70 * 1000) {
+        // reset port
+        await self.log.fatal("Port still locked. Force restart");
+      }
       if (now - self.knownStates.lastPing > 60 * 1000) {
         // reset port
-        self.log.fatal("Port locked. Force restart");
+        await self.log.error("Port locked. Force restart");
+        await self._serialPort.reconnect();
       }
     }, 60000);
     this.counterTimer = setInterval(async () => {
@@ -309,13 +326,13 @@ export class Service extends ServicesBase<
       return undefined;
 
     let data = asString.split("[")[1].split("]")[0].split(":");
-    self.log.info("Known state: {state}", { state: asString });
+    await self.log.info("Known state: {state}", { state: asString });
     switch (data[0]) {
       case "PING":
         {
           self.knownStates.lastPing = new Date().getTime();
           self.knownStates.counter_last_lastPing = 0;
-          self.log.info("PING Received: ");
+          await self.log.info("PING Received: ");
         }
         break;
       case "STATE":
@@ -340,10 +357,10 @@ export class Service extends ServicesBase<
             red: rewritten[6],
             blue_house: rewritten[7],
           };
-          self.log.debug("{rewritten}", {
+          await self.log.debug("{rewritten}", {
             rewritten: JSON.stringify(rewritten),
           });
-          self.log.debug("{output}", { output: JSON.stringify(output) });
+          await self.log.debug("{output}", { output: JSON.stringify(output) });
           await self.handleParsedData(output);
         }
         break;
@@ -436,7 +453,7 @@ export class Service extends ServicesBase<
       this.knownStates.counter_last_db_power = 0;
     }
 
-    this.log.debug(JSON.stringify(this.knownStates));
+    await this.log.debug(JSON.stringify(this.knownStates));
 
     if (
       data.db_in.power !== data.db_red.power ||
@@ -451,7 +468,7 @@ export class Service extends ServicesBase<
       //now - this.knownStates.last_db_power > 5 * 60 * 1000
     ) {
       // log pager duty
-      this.log.error("NO POWER!!! ALERT");
+      await this.log.error("NO POWER!!! ALERT");
     }
   }
 }
