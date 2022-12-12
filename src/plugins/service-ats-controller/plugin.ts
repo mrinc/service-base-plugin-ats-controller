@@ -144,6 +144,8 @@ export class Service extends ServicesBase<
         {
           this.knownStates.contactor_primary = false;
           this.knownStates.contactor_secondary = false;
+          const geniState =
+            this.knownStates.power_secondary === true ? true : false;
           this.knownStates.contactor_generator = true;
           await this.sendContactorUpdate();
 
@@ -184,8 +186,13 @@ export class Service extends ServicesBase<
             return;
           }
 
-          await this.log.warn("GENERATOR WARMUP");
-          await Tools.delay((maxWarmupTime > 10 ? maxWarmupTime : 10) * 1000);
+          if (geniState) {
+            await this.log.warn("Geni was already running, we`ll skip to on");
+            await Tools.delay(10000);
+          } else {
+            await this.log.warn("GENERATOR WARMUP");
+            await Tools.delay((maxWarmupTime > 10 ? maxWarmupTime : 10) * 1000);
+          }
           this.knownStates.contactor_secondary = true;
           await this.sendContactorUpdate();
           this.knownStates.systemBusy = false;
@@ -224,10 +231,13 @@ export class Service extends ServicesBase<
         this.knownStates.contactor_primary = true;
         this.knownStates.contactor_secondary = true;
         await this.sendContactorUpdate(true);
+        this.knownStates.systemState = SysState.Primary;
+        this.knownStates.systemBusy = false;
         return;
       }
       if (!this.knownStates.power_primary) {
-        this.knownStates.contactor_generator = true;
+        if (this.knownStates.power_secondary)
+          this.knownStates.contactor_generator = true;
         this.knownStates.contactor_primary = false;
         this.knownStates.contactor_secondary = true;
         await this.sendContactorUpdate(true);
