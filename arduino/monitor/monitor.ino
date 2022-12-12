@@ -119,7 +119,7 @@ void runPing() {
   if (pingCount < 1000) { return; } 
   pingCount = 0;
   Serial.println("[PING]");
-  //delay(10);
+  delay(10);
   serialOutStates(true);
 }
 

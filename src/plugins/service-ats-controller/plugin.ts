@@ -69,7 +69,7 @@ export class Service extends ServicesBase<
     lastPing: 0,
 
     counter_last_db_power: Number.MIN_VALUE,
-    counter_last_lastPing: Number.MIN_VALUE
+    counter_last_lastPing: Number.MIN_VALUE,
   };
   //private lastPing: number = 0;
   private pingTimer: NodeJS.Timer | null = null;
@@ -250,13 +250,39 @@ export class Service extends ServicesBase<
         await self.parseData(asString);
       }
     );
-    await this._fastify.post("/test/", async (reply, params, query, body) => {
-      self.handleParsedData(body);
-      reply.status(202).send();
-    });
-    await this._fastify.post("/test2/", async (reply, params, query, body) => {
-      self.parseData(body.data);
-      reply.status(202).send();
+    // await this._fastify.post("/test/", async (reply, params, query, body) => {
+    //   self.handleParsedData(body);
+    //   reply.status(202).send();
+    // });
+    // await this._fastify.post("/test2/", async (reply, params, query, body) => {
+    //   self.parseData(body.data);
+    //   reply.status(202).send();
+    // });
+    await this._fastify.get("/", async (reply) => {
+      reply.header("content-type", "text/html");
+      let lines: Array<string> = ["<h1>ATS System</h1>", "<br />"];
+
+      for (let key of Object.keys(this.knownStates)) {
+        let state: any = undefined;
+        if (Tools.isBoolean((self.knownStates as any)[key])) {
+          state = (self.knownStates as any)[key] == true ? "ON" : "OFF";
+        } else if (["last_db_power", "lastPing"].indexOf(key) >= 0) {
+          state = new Date((self.knownStates as any)[key]).toLocaleString();
+        } else {
+          state = (self.knownStates as any)[key];
+        }
+
+        lines.push(
+          '<h3 style="display: inline-block;">' +
+            key +
+            ":</h3>" +
+            (state || "UNKNOWN")
+        );
+      }
+
+      reply.send(
+        "<html><head></head><body>" + lines.join("<br />") + "</body></html>"
+      );
     });
   }
   public override async run(): Promise<void> {
