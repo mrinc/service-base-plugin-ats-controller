@@ -258,7 +258,7 @@ export class Service extends ServicesBase<
     //   self.parseData(body.data);
     //   reply.status(202).send();
     // });
-    await this._fastify.get("/", async (reply) => {
+    await this._fastify.get("//", async (reply) => {
       reply.header("content-type", "text/html");
       let lines: Array<string> = ["<h1>ATS System</h1>", "<br />"];
 
