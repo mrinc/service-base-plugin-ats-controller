@@ -399,7 +399,7 @@ export class Service extends ServicesBase<
 
         timeBeforeLS = timeBeforeLS / 1000; // s
         timeBeforeLS = timeBeforeLS / 60; // m
-        let timeBeforeLSH = timeBeforeLS / 60; // h
+        let timeBeforeLSH = Math.floor(timeBeforeLS / 60); // h
 
         if (
           timeBeforeLS < 6 &&
