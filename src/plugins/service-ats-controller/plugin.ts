@@ -319,6 +319,8 @@ export class Service extends ServicesBase<
         let state: any = undefined;
         if (Tools.isBoolean((self.knownStates as any)[key])) {
           state = (self.knownStates as any)[key] == true ? "ON" : "OFF";
+        } else if (Tools.isNumber((self.knownStates as any)[key])) {
+          state = (self.knownStates as any)[key].toString();
         } else if (
           ["last_db_power", "lastPing", "contactor_generator_time"].indexOf(
             key
@@ -340,6 +342,8 @@ export class Service extends ServicesBase<
         let state: any = undefined;
         if (Tools.isBoolean((self.loadSheddingState as any)[key])) {
           state = (self.loadSheddingState as any)[key] == true ? "YES" : "NO";
+        } else if (Tools.isNumber((self.loadSheddingState as any)[key])) {
+          state = (self.loadSheddingState as any)[key].toString();
         } else {
           state = (self.loadSheddingState as any)[key];
         }
@@ -351,7 +355,9 @@ export class Service extends ServicesBase<
             (state || "UNKNOWN")
         );
       }
-
+      lines.push(
+        '<b style="display: inline-block;">TIME:</b>' + (new Date()).toLocaleString()
+      );
       reply.send(
         '<html><head><meta http-equiv="refresh" content="5"></head><body>' +
           lines.join("<br />") +
