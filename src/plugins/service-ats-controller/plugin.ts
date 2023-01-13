@@ -292,6 +292,12 @@ export class Service extends ServicesBase<
     //   self.parseData(body.data);
     //   reply.status(202).send();
     // });
+    await this._fastify.get("/loadshedding/:stage/", async (reply, params) => {
+      let stage = Number.parseInt(params.stage || "-5");
+      if (stage < 0 || stage > 8) return reply.status(200).send("UNKNOWN");
+      this.loadShedding.updateStage(stage);
+      return reply.status(202).send("OK");
+    });
     await this._fastify.get("//", async (reply) => {
       reply.header("content-type", "text/html");
       let lines: Array<string> = ["<h1>ATS System</h1>", "<br />"];
@@ -300,7 +306,11 @@ export class Service extends ServicesBase<
         let state: any = undefined;
         if (Tools.isBoolean((self.knownStates as any)[key])) {
           state = (self.knownStates as any)[key] == true ? "ON" : "OFF";
-        } else if (["last_db_power", "lastPing", "contactor_generator_time"].indexOf(key) >= 0) {
+        } else if (
+          ["last_db_power", "lastPing", "contactor_generator_time"].indexOf(
+            key
+          ) >= 0
+        ) {
           state = new Date((self.knownStates as any)[key]).toLocaleString();
         } else {
           state = (self.knownStates as any)[key];
@@ -381,7 +391,13 @@ export class Service extends ServicesBase<
           timeBeforeLS - timeBeforeLSH * 60;
       }
 
-      if (!self.knownStates.systemBusy && self.knownStates.power_primary === true && new Date().getTime() - self.knownStates.contactor_generator_time > (20*60*1000)) { // 20 min
+      if (
+        !self.knownStates.systemBusy &&
+        self.knownStates.power_primary === true &&
+        new Date().getTime() - self.knownStates.contactor_generator_time >
+          20 * 60 * 1000
+      ) {
+        // 20 min
         self.knownStates.systemState = SysState.Unknown;
         self.checkState();
       }
@@ -389,7 +405,10 @@ export class Service extends ServicesBase<
     this.counterTimer = setInterval(async () => {
       self.knownStates.counter_last_db_power--;
       self.knownStates.counter_last_lastPing--;
-      if (self.knownStates.contactor_generator === true && self.knownStates.contactor_generator_time === 0) {
+      if (
+        self.knownStates.contactor_generator === true &&
+        self.knownStates.contactor_generator_time === 0
+      ) {
         self.knownStates.contactor_generator_time = new Date().getTime();
       } else if (self.knownStates.contactor_generator === false) {
         self.knownStates.contactor_generator_time = 0;
