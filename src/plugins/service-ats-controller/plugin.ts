@@ -105,6 +105,17 @@ export class Service extends ServicesBase<
         },
       });
     }
+    for (let key of Object.keys(this.loadSheddingState)) {
+      this.metrics[key] = tx2.metric({
+        name: key,
+        value: () => {
+          if (Tools.isBoolean((self.knownStates as any)[key])) {
+            return (self.knownStates as any)[key] == true ? 1 : 0;
+          }
+          return (self.knownStates as any)[key];
+        },
+      });
+    }
   }
 
   private _geniContactorTimer: NodeJS.Timer | null = null;

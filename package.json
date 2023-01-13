@@ -30,9 +30,9 @@
     "@bettercorp/service-base-plugin-events-rabbitmq": "^3.0.0",
     "@bettercorp/service-base-plugin-raspverry-pi-gpio": "^0.0.7",
     "@bettercorp/service-base-plugin-serial": "^0.0.6",
-    "@bettercorp/service-base-plugin-web-server": "^6.2.1",
+    "@bettercorp/service-base-plugin-web-server": "^6.3.0",
     "@bettercorp/tools": "^2.1.24",
-    "@types/node": "^18.11.13",
+    "@types/node": "^18.11.18",
     "tx2": "^1.0.5"
   }
 }
