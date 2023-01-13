@@ -338,10 +338,10 @@ export class Service extends ServicesBase<
       }
       for (let key of Object.keys(this.loadSheddingState)) {
         let state: any = undefined;
-        if (Tools.isBoolean((self.knownStates as any)[key])) {
-          state = (self.knownStates as any)[key] == true ? "YES" : "NO";
+        if (Tools.isBoolean((self.loadSheddingState as any)[key])) {
+          state = (self.loadSheddingState as any)[key] == true ? "YES" : "NO";
         } else {
-          state = (self.knownStates as any)[key];
+          state = (self.loadSheddingState as any)[key];
         }
 
         lines.push(
