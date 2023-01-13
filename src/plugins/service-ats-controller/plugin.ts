@@ -148,7 +148,7 @@ export class Service extends ServicesBase<
           this.knownStates.contactor_primary = true;
           await this.sendContactorUpdate();
           if (this.knownStates.contactor_generator === true) {
-            await Tools.delay(10000);
+            await Tools.delay(60000);
             this.knownStates.contactor_generator = false;
             await this.sendContactorUpdate();
             await Tools.delay(5000);
