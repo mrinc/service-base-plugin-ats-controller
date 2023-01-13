@@ -309,6 +309,7 @@ export class Service extends ServicesBase<
       let stage = Number.parseInt(params.stage || "-5");
       if (stage < 0 || stage > 8) return reply.status(200).send("UNKNOWN");
       this.loadShedding.updateStage(stage);
+      this.runLoadSheddingUpdater();
       return reply.status(202).send("OK");
     });
     await this._fastify.get("//", async (reply) => {
@@ -356,7 +357,8 @@ export class Service extends ServicesBase<
         );
       }
       lines.push(
-        '<b style="display: inline-block;">TIME:</b>' + (new Date()).toLocaleString()
+        '<b style="display: inline-block;">TIME:</b>' +
+          new Date().toLocaleString()
       );
       reply.send(
         '<html><head><meta http-equiv="refresh" content="5"></head><body>' +
@@ -364,6 +366,53 @@ export class Service extends ServicesBase<
           "</body></html>"
       );
     });
+  }
+  private async runLoadSheddingUpdater() {
+    const self = this;
+    self.log.info("Check Load Shedding");
+    self.loadSheddingState.currentStage = self.loadShedding.getStage();
+    let timeBeforeLS = self.loadShedding.getTimeUntilNextLoadShedding();
+    if (timeBeforeLS <= -1) {
+      self.loadSheddingState.inLoadShedding = false;
+      self.loadSheddingState.timeHUntilNextLS = 0;
+      self.loadSheddingState.timeMUntilNextLS = 0;
+    } else if (timeBeforeLS === 0) {
+      self.loadSheddingState.inLoadShedding = true;
+      self.loadSheddingState.timeHUntilNextLS = 0;
+      self.loadSheddingState.timeMUntilNextLS = 0;
+    } else {
+      self.loadSheddingState.inLoadShedding = false;
+
+      timeBeforeLS = timeBeforeLS / 1000; // s
+      timeBeforeLS = timeBeforeLS / 60; // m
+      let timeBeforeLSH = Math.floor(timeBeforeLS / 60); // h
+
+      if (timeBeforeLS < 6 && self.knownStates.contactor_generator === false) {
+        self.knownStates.contactor_generator = true;
+        await self.sendContactorUpdate(true);
+        await Tools.delay(5000);
+        if (!this.knownStates.power_secondary) {
+          this.knownStates.contactor_generator = false;
+          await self.sendContactorUpdate(true);
+          await Tools.delay(10000);
+        }
+      }
+
+      self.loadSheddingState.timeHUntilNextLS = timeBeforeLSH;
+      self.loadSheddingState.timeMUntilNextLS =
+        timeBeforeLS - timeBeforeLSH * 60;
+    }
+
+    if (
+      !self.knownStates.systemBusy &&
+      self.knownStates.power_primary === true &&
+      new Date().getTime() - self.knownStates.contactor_generator_time >
+        20 * 60 * 1000
+    ) {
+      // 20 min
+      self.knownStates.systemState = SysState.Unknown;
+      self.checkState();
+    }
   }
   public override async run(): Promise<void> {
     //await this.sendContactorUpdate(true);
@@ -383,53 +432,7 @@ export class Service extends ServicesBase<
       }
     }, 60000);
     this.loadSheddingTimer = setInterval(async () => {
-      self.log.info("Check Load Shedding");
-      self.loadSheddingState.currentStage = self.loadShedding.getStage();
-      let timeBeforeLS = self.loadShedding.getTimeUntilNextLoadShedding();
-      if (timeBeforeLS <= -1) {
-        self.loadSheddingState.inLoadShedding = false;
-        self.loadSheddingState.timeHUntilNextLS = 0;
-        self.loadSheddingState.timeMUntilNextLS = 0;
-      } else if (timeBeforeLS === 0) {
-        self.loadSheddingState.inLoadShedding = true;
-        self.loadSheddingState.timeHUntilNextLS = 0;
-        self.loadSheddingState.timeMUntilNextLS = 0;
-      } else {
-        self.loadSheddingState.inLoadShedding = false;
-
-        timeBeforeLS = timeBeforeLS / 1000; // s
-        timeBeforeLS = timeBeforeLS / 60; // m
-        let timeBeforeLSH = Math.floor(timeBeforeLS / 60); // h
-
-        if (
-          timeBeforeLS < 6 &&
-          self.knownStates.contactor_generator === false
-        ) {
-          self.knownStates.contactor_generator = true;
-          await self.sendContactorUpdate(true);
-          await Tools.delay(5000);
-          if (!this.knownStates.power_secondary) {
-            this.knownStates.contactor_generator = false;
-            await self.sendContactorUpdate(true);
-            await Tools.delay(10000);
-          }
-        }
-
-        self.loadSheddingState.timeHUntilNextLS = timeBeforeLSH;
-        self.loadSheddingState.timeMUntilNextLS =
-          timeBeforeLS - timeBeforeLSH * 60;
-      }
-
-      if (
-        !self.knownStates.systemBusy &&
-        self.knownStates.power_primary === true &&
-        new Date().getTime() - self.knownStates.contactor_generator_time >
-          20 * 60 * 1000
-      ) {
-        // 20 min
-        self.knownStates.systemState = SysState.Unknown;
-        self.checkState();
-      }
+      self.runLoadSheddingUpdater();
     }, 60000);
     this.counterTimer = setInterval(async () => {
       self.knownStates.counter_last_db_power--;
@@ -443,6 +446,7 @@ export class Service extends ServicesBase<
         self.knownStates.contactor_generator_time = 0;
       }
     }, 1000);
+    this.runLoadSheddingUpdater();
   }
 
   private async parseData(asString: string): Promise<any> {
