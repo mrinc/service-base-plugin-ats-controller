@@ -81,6 +81,7 @@ export class Service extends ServicesBase<
   };
   //private lastPing: number = 0;
   private pingTimer: NodeJS.Timer | null = null;
+  private loadSheddingTimer: NodeJS.Timer | null = null;
   private counterTimer: NodeJS.Timer | null = null;
   constructor(
     pluginName: string,
@@ -124,6 +125,7 @@ export class Service extends ServicesBase<
       clearInterval(this._geniContactorTimer);
     if (this.pingTimer !== null) clearInterval(this.pingTimer);
     if (this.counterTimer !== null) clearInterval(this.counterTimer);
+    if (this.loadSheddingTimer !== null) clearInterval(this.loadSheddingTimer);
   }
 
   private async setState(systemState: SysState) {
@@ -372,6 +374,48 @@ export class Service extends ServicesBase<
         await self._serialPort.reconnect();
       }
 
+      self.loadSheddingState.currentStage = self.loadShedding.getStage();
+      let timeBeforeLS = self.loadShedding.getTimeUntilNextLoadShedding();
+      if (timeBeforeLS <= -1) {
+        self.loadSheddingState.inLoadShedding = false;
+        self.loadSheddingState.timeHUntilNextLS = 0;
+        self.loadSheddingState.timeMUntilNextLS = 0;
+      } else if (timeBeforeLS === 0) {
+        self.loadSheddingState.inLoadShedding = true;
+        self.loadSheddingState.timeHUntilNextLS = 0;
+        self.loadSheddingState.timeMUntilNextLS = 0;
+      } else {
+        self.loadSheddingState.inLoadShedding = false;
+
+        timeBeforeLS = timeBeforeLS / 1000; // s
+        timeBeforeLS = timeBeforeLS / 60; // m
+        let timeBeforeLSH = timeBeforeLS / 60; // h
+
+        if (
+          timeBeforeLS < 6 &&
+          self.knownStates.contactor_generator === false
+        ) {
+          self.knownStates.contactor_generator = true;
+          await self.sendContactorUpdate(true);
+        }
+
+        self.loadSheddingState.timeHUntilNextLS = timeBeforeLSH;
+        self.loadSheddingState.timeMUntilNextLS =
+          timeBeforeLS - timeBeforeLSH * 60;
+      }
+
+      if (
+        !self.knownStates.systemBusy &&
+        self.knownStates.power_primary === true &&
+        new Date().getTime() - self.knownStates.contactor_generator_time >
+          20 * 60 * 1000
+      ) {
+        // 20 min
+        self.knownStates.systemState = SysState.Unknown;
+        self.checkState();
+      }
+    }, 60000);
+    this.loadSheddingTimer = setInterval(async () => {
       self.loadSheddingState.currentStage = self.loadShedding.getStage();
       let timeBeforeLS = self.loadShedding.getTimeUntilNextLoadShedding();
       if (timeBeforeLS <= -1) {
