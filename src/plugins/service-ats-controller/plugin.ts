@@ -372,6 +372,7 @@ export class Service extends ServicesBase<
     self.log.info("Check Load Shedding");
     self.loadSheddingState.currentStage = self.loadShedding.getStage();
     let timeBeforeLS = self.loadShedding.getTimeUntilNextLoadShedding();
+    self.log.info("Time before LS: {LST}", { LST: timeBeforeLS });
     if (timeBeforeLS <= -1) {
       self.loadSheddingState.inLoadShedding = false;
       self.loadSheddingState.timeHUntilNextLS = 0;
