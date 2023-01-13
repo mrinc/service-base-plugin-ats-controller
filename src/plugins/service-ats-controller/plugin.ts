@@ -110,10 +110,10 @@ export class Service extends ServicesBase<
       this.metrics[key] = tx2.metric({
         name: key,
         value: () => {
-          if (Tools.isBoolean((self.knownStates as any)[key])) {
-            return (self.knownStates as any)[key] == true ? 1 : 0;
+          if (Tools.isBoolean((self.loadSheddingState as any)[key])) {
+            return (self.loadSheddingState as any)[key] == true ? 1 : 0;
           }
-          return (self.knownStates as any)[key];
+          return (self.loadSheddingState as any)[key];
         },
       });
     }
@@ -353,7 +353,9 @@ export class Service extends ServicesBase<
       }
 
       reply.send(
-        '<html><head><meta http-equiv="refresh" content="5"></head><body>' + lines.join("<br />") + "</body></html>"
+        '<html><head><meta http-equiv="refresh" content="5"></head><body>' +
+          lines.join("<br />") +
+          "</body></html>"
       );
     });
   }
@@ -373,49 +375,9 @@ export class Service extends ServicesBase<
         await self.log.error("Port locked. Force restart");
         await self._serialPort.reconnect();
       }
-
-      self.loadSheddingState.currentStage = self.loadShedding.getStage();
-      let timeBeforeLS = self.loadShedding.getTimeUntilNextLoadShedding();
-      if (timeBeforeLS <= -1) {
-        self.loadSheddingState.inLoadShedding = false;
-        self.loadSheddingState.timeHUntilNextLS = 0;
-        self.loadSheddingState.timeMUntilNextLS = 0;
-      } else if (timeBeforeLS === 0) {
-        self.loadSheddingState.inLoadShedding = true;
-        self.loadSheddingState.timeHUntilNextLS = 0;
-        self.loadSheddingState.timeMUntilNextLS = 0;
-      } else {
-        self.loadSheddingState.inLoadShedding = false;
-
-        timeBeforeLS = timeBeforeLS / 1000; // s
-        timeBeforeLS = timeBeforeLS / 60; // m
-        let timeBeforeLSH = timeBeforeLS / 60; // h
-
-        if (
-          timeBeforeLS < 6 &&
-          self.knownStates.contactor_generator === false
-        ) {
-          self.knownStates.contactor_generator = true;
-          await self.sendContactorUpdate(true);
-        }
-
-        self.loadSheddingState.timeHUntilNextLS = timeBeforeLSH;
-        self.loadSheddingState.timeMUntilNextLS =
-          timeBeforeLS - timeBeforeLSH * 60;
-      }
-
-      if (
-        !self.knownStates.systemBusy &&
-        self.knownStates.power_primary === true &&
-        new Date().getTime() - self.knownStates.contactor_generator_time >
-          20 * 60 * 1000
-      ) {
-        // 20 min
-        self.knownStates.systemState = SysState.Unknown;
-        self.checkState();
-      }
     }, 60000);
     this.loadSheddingTimer = setInterval(async () => {
+      self.log.info("Check Load Shedding");
       self.loadSheddingState.currentStage = self.loadShedding.getStage();
       let timeBeforeLS = self.loadShedding.getTimeUntilNextLoadShedding();
       if (timeBeforeLS <= -1) {
@@ -439,6 +401,12 @@ export class Service extends ServicesBase<
         ) {
           self.knownStates.contactor_generator = true;
           await self.sendContactorUpdate(true);
+          await Tools.delay(5000);
+          if (!this.knownStates.power_secondary) {
+            this.knownStates.contactor_generator = false;
+            await self.sendContactorUpdate(true);
+            await Tools.delay(10000);
+          }
         }
 
         self.loadSheddingState.timeHUntilNextLS = timeBeforeLSH;
