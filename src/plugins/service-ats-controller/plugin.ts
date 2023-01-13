@@ -317,9 +317,9 @@ export class Service extends ServicesBase<
         }
 
         lines.push(
-          '<h3 style="display: inline-block;">' +
+          '<b style="display: inline-block;">' +
             key +
-            ":</h3>" +
+            ":</b>" +
             (state || "UNKNOWN")
         );
       }
@@ -332,15 +332,15 @@ export class Service extends ServicesBase<
         }
 
         lines.push(
-          '<h3 style="display: inline-block;">' +
+          '<b style="display: inline-block;">' +
             key +
-            ":</h3>" +
+            ":</b>" +
             (state || "UNKNOWN")
         );
       }
 
       reply.send(
-        "<html><head></head><body>" + lines.join("<br />") + "</body></html>"
+        '<html><head><meta http-equiv="refresh" content="5"></head><body>' + lines.join("<br />") + "</body></html>"
       );
     });
   }
