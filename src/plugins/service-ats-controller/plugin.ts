@@ -9,6 +9,7 @@ import { raspPIGPIO } from "@bettercorp/service-base-plugin-raspverry-pi-gpio";
 import { Tools } from "@bettercorp/tools";
 import { fastify } from "@bettercorp/service-base-plugin-web-server";
 import * as tx2 from "tx2";
+import { loadshedding } from "./loadshedding";
 
 export interface ParsedStateItem {
   input: number;
@@ -40,11 +41,18 @@ export class Service extends ServicesBase<
   ServiceCallable,
   MyPluginConfig
 > {
+  private loadShedding!: loadshedding;
   private _serialPort!: serialPort;
   private _gpio!: raspPIGPIO;
   private _fastify!: fastify;
   //private knownStates_old: any = null;
   private metrics: any = {};
+  private loadSheddingState = {
+    currentStage: 0,
+    inLoadShedding: false,
+    timeHUntilNextLS: 0,
+    timeMUntilNextLS: 0,
+  };
   private knownStates = {
     systemBusy: false,
     systemState: SysState.Unknown,
@@ -52,7 +60,7 @@ export class Service extends ServicesBase<
     contactor_primary: true,
     contactor_secondary: true,
     contactor_generator: false,
-    //contactor_generator_time: 0,
+    contactor_generator_time: 0,
     //contactor_generator_last_warmupTime: 0,
     //contactor_generator_startup_count: 0,
 
@@ -151,6 +159,7 @@ export class Service extends ServicesBase<
 
           let maxWarmupTime = 60; //s
           await Tools.delay(10000);
+
           maxWarmupTime = maxWarmupTime - 10;
           if (this.knownStates.power_secondary !== true) {
             this.knownStates.contactor_generator = false;
@@ -265,6 +274,9 @@ export class Service extends ServicesBase<
 
   public override async init(): Promise<void> {
     const self = this;
+    this.loadShedding = new loadshedding(
+      (await this.getPluginConfig()).loadsheddingFile
+    );
     await this._serialPort.onMessage(
       async (line: string | Buffer): Promise<any> => {
         let asString =
@@ -288,8 +300,23 @@ export class Service extends ServicesBase<
         let state: any = undefined;
         if (Tools.isBoolean((self.knownStates as any)[key])) {
           state = (self.knownStates as any)[key] == true ? "ON" : "OFF";
-        } else if (["last_db_power", "lastPing"].indexOf(key) >= 0) {
+        } else if (["last_db_power", "lastPing", "contactor_generator_time"].indexOf(key) >= 0) {
           state = new Date((self.knownStates as any)[key]).toLocaleString();
+        } else {
+          state = (self.knownStates as any)[key];
+        }
+
+        lines.push(
+          '<h3 style="display: inline-block;">' +
+            key +
+            ":</h3>" +
+            (state || "UNKNOWN")
+        );
+      }
+      for (let key of Object.keys(this.loadSheddingState)) {
+        let state: any = undefined;
+        if (Tools.isBoolean((self.knownStates as any)[key])) {
+          state = (self.knownStates as any)[key] == true ? "YES" : "NO";
         } else {
           state = (self.knownStates as any)[key];
         }
@@ -323,10 +350,50 @@ export class Service extends ServicesBase<
         await self.log.error("Port locked. Force restart");
         await self._serialPort.reconnect();
       }
+
+      self.loadSheddingState.currentStage = self.loadShedding.getStage();
+      let timeBeforeLS = self.loadShedding.getTimeUntilNextLoadShedding();
+      if (timeBeforeLS <= -1) {
+        self.loadSheddingState.inLoadShedding = false;
+        self.loadSheddingState.timeHUntilNextLS = 0;
+        self.loadSheddingState.timeMUntilNextLS = 0;
+      } else if (timeBeforeLS === 0) {
+        self.loadSheddingState.inLoadShedding = true;
+        self.loadSheddingState.timeHUntilNextLS = 0;
+        self.loadSheddingState.timeMUntilNextLS = 0;
+      } else {
+        self.loadSheddingState.inLoadShedding = false;
+
+        timeBeforeLS = timeBeforeLS / 1000; // s
+        timeBeforeLS = timeBeforeLS / 60; // m
+        let timeBeforeLSH = timeBeforeLS / 60; // h
+
+        if (
+          timeBeforeLS < 6 &&
+          self.knownStates.contactor_generator === false
+        ) {
+          self.knownStates.contactor_generator = true;
+          await self.sendContactorUpdate(true);
+        }
+
+        self.loadSheddingState.timeHUntilNextLS = timeBeforeLSH;
+        self.loadSheddingState.timeMUntilNextLS =
+          timeBeforeLS - timeBeforeLSH * 60;
+      }
+
+      if (!self.knownStates.systemBusy && self.knownStates.power_primary === true && new Date().getTime() - self.knownStates.contactor_generator_time > (20*60*1000)) { // 20 min
+        self.knownStates.systemState = SysState.Unknown;
+        self.checkState();
+      }
     }, 60000);
     this.counterTimer = setInterval(async () => {
       self.knownStates.counter_last_db_power--;
       self.knownStates.counter_last_lastPing--;
+      if (self.knownStates.contactor_generator === true && self.knownStates.contactor_generator_time === 0) {
+        self.knownStates.contactor_generator_time = new Date().getTime();
+      } else if (self.knownStates.contactor_generator === false) {
+        self.knownStates.contactor_generator_time = 0;
+      }
     }, 1000);
   }
 
