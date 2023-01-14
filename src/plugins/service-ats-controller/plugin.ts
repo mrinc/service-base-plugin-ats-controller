@@ -426,10 +426,11 @@ export class Service extends ServicesBase<
     if (
       !self.knownStates.systemBusy &&
       self.knownStates.power_primary === true &&
+      self.knownStates.contactor_generator === true &&
       new Date().getTime() - self.knownStates.contactor_generator_time >
-        20 * 60 * 1000
+        (self.loadSheddingState.startGeniMinutesBeforeLoadShedding + 10) * 60 * 1000
     ) {
-      // 20 min
+      // 10+ min
       self.knownStates.systemState = SysState.Unknown;
       self.checkState();
     }
