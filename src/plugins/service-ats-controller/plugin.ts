@@ -325,14 +325,14 @@ export class Service extends ServicesBase<
         let state: any = undefined;
         if (Tools.isBoolean((self.knownStates as any)[key])) {
           state = (self.knownStates as any)[key] == true ? "ON" : "OFF";
-        } else if (Tools.isNumber((self.knownStates as any)[key])) {
-          state = (self.knownStates as any)[key].toString();
         } else if (
           ["last_db_power", "lastPing", "contactor_generator_time"].indexOf(
             key
           ) >= 0
         ) {
           state = new Date((self.knownStates as any)[key]).toLocaleString();
+        } else if (Tools.isNumber((self.knownStates as any)[key])) {
+          state = (self.knownStates as any)[key].toString();
         } else {
           state = (self.knownStates as any)[key];
         }
