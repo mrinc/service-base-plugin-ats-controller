@@ -409,10 +409,12 @@ export class Service extends ServicesBase<
         self.knownStates.contactor_generator === false
       ) {
         self.knownStates.contactor_generator = true;
+        self.knownStates.contactor_secondary = false;
         await self.sendContactorUpdate(true);
         await Tools.delay(5000);
         if (!this.knownStates.power_secondary) {
           this.knownStates.contactor_generator = false;
+          self.knownStates.contactor_secondary = true;
           await self.sendContactorUpdate(true);
           await Tools.delay(10000);
         }
