@@ -400,7 +400,7 @@ export class Service extends ServicesBase<
         self.loadSheddingState.startGeniMinutesBeforeLoadShedding;
       if (
         self.loadSheddingState.startGeniMinutesBeforeLoadSheddingCounter <
-        self.loadSheddingState.startGeniMinutesBeforeLoadShedding
+        0
       )
         self.loadSheddingState.startGeniMinutesBeforeLoadSheddingCounter = -2;
       if (
