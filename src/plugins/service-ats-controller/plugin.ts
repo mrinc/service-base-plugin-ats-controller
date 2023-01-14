@@ -52,6 +52,8 @@ export class Service extends ServicesBase<
     inLoadShedding: false,
     timeHUntilNextLS: 0,
     timeMUntilNextLS: 0,
+    startGeniMinutesBeforeLoadShedding: 0,
+    startGeniMinutesBeforeLoadSheddingCounter: 0,
   };
   private knownStates = {
     systemBusy: false,
@@ -290,6 +292,9 @@ export class Service extends ServicesBase<
     this.loadShedding = new loadshedding(
       (await this.getPluginConfig()).loadsheddingFile
     );
+    this.loadSheddingState.startGeniMinutesBeforeLoadShedding = (
+      await this.getPluginConfig()
+    ).startGeniMinutesBeforeLoadShedding;
     await this._serialPort.onMessage(
       async (line: string | Buffer): Promise<any> => {
         let asString =
@@ -377,10 +382,12 @@ export class Service extends ServicesBase<
       self.loadSheddingState.inLoadShedding = false;
       self.loadSheddingState.timeHUntilNextLS = 0;
       self.loadSheddingState.timeMUntilNextLS = 0;
+      self.loadSheddingState.startGeniMinutesBeforeLoadSheddingCounter = -3;
     } else if (timeBeforeLS === 0) {
       self.loadSheddingState.inLoadShedding = true;
       self.loadSheddingState.timeHUntilNextLS = 0;
       self.loadSheddingState.timeMUntilNextLS = 0;
+      self.loadSheddingState.startGeniMinutesBeforeLoadSheddingCounter = -1;
     } else {
       self.loadSheddingState.inLoadShedding = false;
 
@@ -388,7 +395,19 @@ export class Service extends ServicesBase<
       timeBeforeLS = timeBeforeLS / 60; // m
       let timeBeforeLSH = Math.floor(timeBeforeLS / 60); // h
 
-      if (timeBeforeLS < 6 && self.knownStates.contactor_generator === false) {
+      self.loadSheddingState.startGeniMinutesBeforeLoadSheddingCounter =
+        timeBeforeLS -
+        self.loadSheddingState.startGeniMinutesBeforeLoadShedding;
+      if (
+        self.loadSheddingState.startGeniMinutesBeforeLoadSheddingCounter <
+        self.loadSheddingState.startGeniMinutesBeforeLoadShedding
+      )
+        self.loadSheddingState.startGeniMinutesBeforeLoadSheddingCounter = -2;
+      if (
+        timeBeforeLS <=
+          self.loadSheddingState.startGeniMinutesBeforeLoadShedding &&
+        self.knownStates.contactor_generator === false
+      ) {
         self.knownStates.contactor_generator = true;
         await self.sendContactorUpdate(true);
         await Tools.delay(5000);
