@@ -28,9 +28,9 @@ export interface ParsedState {
 }
 
 export enum SysState {
-  Unknown = "Unknown",
-  Primary = "Primary",
-  Secondary = "Secondary",
+  Unknown = -1,
+  Primary = 0,
+  Secondary = 1,
 }
 
 export class Service extends ServicesBase<
@@ -227,9 +227,18 @@ export class Service extends ServicesBase<
     this.knownStates.systemBusy = false;
   }
 
-  private async checkState() {
+  private activatedCheckState: boolean = false;
+  private async checkState(parsedData: boolean = false) {
     if (this.knownStates.systemBusy)
       return await this.log.warn("Cannot check state, busy");
+    if (!this.activatedCheckState) {
+      if (parsedData === true) {
+        this.activatedCheckState = true;
+      } else
+        return await this.log.warn(
+          "WAITING FOR DATA BEFORE STATE VERIFICATION/VALIDATION"
+        );
+    }
     await this.log.warn("checking sys state [{state}]", {
       state: this.knownStates.systemState,
     });
@@ -260,15 +269,33 @@ export class Service extends ServicesBase<
         return;
       }
       if (!this.knownStates.power_primary) {
-        if (this.knownStates.power_secondary)
+        if (this.knownStates.power_secondary) {
           this.knownStates.contactor_generator = true;
-        this.knownStates.contactor_primary = false;
-        this.knownStates.contactor_secondary = true;
-        await this.sendContactorUpdate(true);
-        this.knownStates.systemState = SysState.Secondary;
+          this.knownStates.contactor_primary = false;
+          this.knownStates.contactor_secondary = true;
+          await this.sendContactorUpdate(true);
+          this.knownStates.systemState = SysState.Secondary;
+        } else {
+          this.knownStates.contactor_primary = false;
+          this.knownStates.contactor_secondary = false;
+          this.knownStates.contactor_generator = true;
+          await this.sendContactorUpdate();
+          await Tools.delay(10000);
+          if (!this.knownStates.power_secondary) {
+            this.knownStates.contactor_generator = false;
+          } else {
+            await Tools.delay(5000);
+            this.knownStates.systemState = SysState.Secondary;
+            this.knownStates.contactor_secondary = true;
+          }
+          await this.sendContactorUpdate();
+          await Tools.delay(5000);
+        }
         this.knownStates.systemBusy = false;
         return;
       }
+      this.knownStates.systemBusy = false;
+      return;
     }
     this.knownStates.systemBusy = false;
     if (
@@ -310,6 +337,79 @@ export class Service extends ServicesBase<
     //   self.parseData(body.data);
     //   reply.status(202).send();
     // });
+    await this._fastify.get(
+      "/generator/:state/",
+      async (reply, params, query) => {
+        if (!self.activatedCheckState && query.f !== "1")
+          return reply.status(500).send("WAITING ON DATA - ?f=1 to override");
+        let stage = Number.parseInt(params.state || "-5");
+        if (stage < 0 || stage > 1) return reply.status(200).send("UNKNOWN");
+        this.knownStates.systemBusy = true;
+        if (stage === 0) {
+          this.knownStates.contactor_secondary = false;
+          await this.sendContactorUpdate();
+          await Tools.delay(5000);
+          this.knownStates.contactor_generator = false;
+          await this.sendContactorUpdate();
+          await Tools.delay(5000);
+        } else if (stage === 1) {
+          this.knownStates.contactor_secondary = false;
+          this.knownStates.contactor_generator = true;
+          await this.sendContactorUpdate();
+          await Tools.delay(10000);
+          if (!this.knownStates.power_secondary) {
+            this.knownStates.contactor_generator = false;
+            await this.sendContactorUpdate();
+            this.knownStates.systemBusy = false;
+            return reply.status(202).send("FAILED");
+          } else {
+            await Tools.delay(5000);
+            this.knownStates.contactor_secondary = true;
+            await this.sendContactorUpdate();
+            this.knownStates.systemBusy = false;
+            return reply.status(202).send("OK, ON AND CONNECTED");
+          }
+        }
+        return reply.status(202).send("I DONT KNOW");
+      }
+    );
+    await this._fastify.get("/force/:state/", async (reply, params, query) => {
+      if (!self.activatedCheckState && query.f !== "1")
+        return reply.status(500).send("WAITING ON DATA - ?f=1 to override");
+      let stage = Number.parseInt(params.state || "-5");
+      if (stage < -1 || stage > 1) return reply.status(200).send("UNKNOWN");
+      this.knownStates.systemState = stage as SysState;
+      this.knownStates.systemBusy = true;
+      if (stage === 0) {
+        this.knownStates.contactor_primary = false;
+        this.knownStates.contactor_secondary = false;
+        await this.sendContactorUpdate();
+        await Tools.delay(5000);
+        this.knownStates.contactor_primary = true;
+        this.knownStates.contactor_generator = false;
+        await this.sendContactorUpdate();
+        await Tools.delay(5000);
+        this.knownStates.contactor_secondary = true;
+        await this.sendContactorUpdate();
+      } else if (stage === 1) {
+        this.knownStates.contactor_primary = false;
+        this.knownStates.contactor_secondary = false;
+        this.knownStates.contactor_generator = true;
+        await this.sendContactorUpdate();
+        await Tools.delay(10000);
+        if (!this.knownStates.power_secondary) {
+          this.knownStates.contactor_generator = false;
+        } else {
+          await Tools.delay(5000);
+          this.knownStates.contactor_secondary = true;
+        }
+        await this.sendContactorUpdate();
+        await Tools.delay(5000);
+      }
+      this.knownStates.systemBusy = false;
+      //await this.setState(this.knownStates.systemState);
+      return reply.status(202).send("OK");
+    });
     await this._fastify.get("/loadshedding/:stage/", async (reply, params) => {
       let stage = Number.parseInt(params.stage || "-5");
       if (stage < 0 || stage > 8) return reply.status(200).send("UNKNOWN");
@@ -398,10 +498,7 @@ export class Service extends ServicesBase<
       self.loadSheddingState.startGeniMinutesBeforeLoadSheddingCounter =
         timeBeforeLS -
         self.loadSheddingState.startGeniMinutesBeforeLoadShedding;
-      if (
-        self.loadSheddingState.startGeniMinutesBeforeLoadSheddingCounter <
-        0
-      )
+      if (self.loadSheddingState.startGeniMinutesBeforeLoadSheddingCounter < 0)
         self.loadSheddingState.startGeniMinutesBeforeLoadSheddingCounter = -2;
       if (
         timeBeforeLS <=
@@ -431,7 +528,9 @@ export class Service extends ServicesBase<
       self.knownStates.systemState === SysState.Primary &&
       self.knownStates.contactor_generator === true &&
       new Date().getTime() - self.knownStates.contactor_generator_time >
-        (self.loadSheddingState.startGeniMinutesBeforeLoadShedding + 10) * 60 * 1000
+        (self.loadSheddingState.startGeniMinutesBeforeLoadShedding + 10) *
+          60 *
+          1000
     ) {
       // 10+ min
       self.knownStates.systemState = SysState.Primary;
@@ -515,6 +614,8 @@ export class Service extends ServicesBase<
           });
           await self.log.debug("{output}", { output: JSON.stringify(output) });
           await self.handleParsedData(output);
+          await this.checkState(true);
+          return;
         }
         break;
     }
