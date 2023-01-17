@@ -69,6 +69,7 @@ export class loadshedding {
       });
     let currentDay: number = NOW.getDay();
     let timeNow = (NOW.getHours() * 60 + NOW.getMinutes()) * 60 * 1000;
+    let timeActNow = (NOW.getHours() * 60 + NOW.getMinutes()) * 60 * 1000;
     let nextSession: any = null;
     let timeInSDaysAhead = 0;
 
@@ -100,13 +101,33 @@ export class loadshedding {
 
       for (let schedule of times) {
         for (let time of schedule.times) {
-          console.log(time);
-          const timeUntil = time.startTime - timeNow + timeInSDaysAhead;
+          if (timeInSDaysAhead > 0) {
+            const timeUntil = time.startTime - timeActNow + timeInSDaysAhead;
+            console.log(
+              "a",
+              time,
+              timeNow,
+              timeActNow,
+              timeInSDaysAhead,
+              timeUntil
+            );
+            return timeUntil > 0 ? timeUntil : 0;
+          }
+
+          const timeUntil = time.startTime - timeNow;
+          console.log(
+            "b",
+            time,
+            timeNow,
+            timeActNow,
+            timeInSDaysAhead,
+            timeUntil
+          );
           return timeUntil > 0 ? timeUntil : 0;
         }
       }
 
-      timeInSDaysAhead += 60 * 60 * 24;
+      timeInSDaysAhead += 24 * (60 * 60 * 1000);
       currentDay++;
       timeNow = 0;
       if (currentDay > 6) currentDay = 0;

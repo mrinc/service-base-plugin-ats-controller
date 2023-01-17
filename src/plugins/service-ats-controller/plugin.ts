@@ -505,6 +505,7 @@ export class Service extends ServicesBase<
           self.loadSheddingState.startGeniMinutesBeforeLoadShedding &&
         self.knownStates.contactor_generator === false
       ) {
+        self.log.warn('starting geni in prep for load shedding');
         self.knownStates.contactor_generator = true;
         self.knownStates.contactor_secondary = false;
         await self.sendContactorUpdate(true);
