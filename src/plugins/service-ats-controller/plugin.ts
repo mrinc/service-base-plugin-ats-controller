@@ -143,7 +143,17 @@ export class Service extends ServicesBase<
             this.knownStates.contactor_secondary === true &&
             this.knownStates.power_secondary === true &&
             this.knownStates.power_DB === true;
-          this.knownStates.contactor_primary = false;
+          if (requiresDelay) {
+            await Tools.delay(120000);
+            if (!this.knownStates.power_primary) {
+              this.knownStates.systemBusy = false;
+              this.setState(SysState.Secondary);
+              return;
+            }
+          }
+          /*if (!this.knownStates.contactor_primary) {
+            this.knownStates.contactor_primary = false;
+          }*/
           this.knownStates.contactor_secondary = false;
           await this.sendContactorUpdate();
           if (requiresDelay) {
@@ -166,10 +176,11 @@ export class Service extends ServicesBase<
       case SysState.Secondary:
         {
           this.knownStates.contactor_primary = false;
-          this.knownStates.contactor_secondary = false;
+          //this.knownStates.contactor_secondary = false;
           const geniState =
             this.knownStates.power_secondary === true ? true : false;
           this.knownStates.contactor_generator = true;
+          if (!geniState) this.knownStates.contactor_secondary = false;
           await this.sendContactorUpdate();
 
           let maxWarmupTime = 60; //s
@@ -267,8 +278,7 @@ export class Service extends ServicesBase<
         this.knownStates.systemState = SysState.Primary;
         this.knownStates.systemBusy = false;
         return;
-      }
-      if (!this.knownStates.power_primary) {
+      } else {
         if (this.knownStates.power_secondary) {
           this.knownStates.contactor_generator = true;
           this.knownStates.contactor_primary = false;
@@ -505,7 +515,7 @@ export class Service extends ServicesBase<
           self.loadSheddingState.startGeniMinutesBeforeLoadShedding &&
         self.knownStates.contactor_generator === false
       ) {
-        self.log.warn('starting geni in prep for load shedding');
+        self.log.warn("starting geni in prep for load shedding");
         self.knownStates.contactor_generator = true;
         self.knownStates.contactor_secondary = false;
         await self.sendContactorUpdate(true);
