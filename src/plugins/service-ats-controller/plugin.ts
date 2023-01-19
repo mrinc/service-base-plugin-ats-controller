@@ -155,21 +155,21 @@ export class Service extends ServicesBase<
             this.knownStates.contactor_primary = false;
           }*/
           this.knownStates.contactor_secondary = false;
-          await this.sendContactorUpdate();
+          await this.sendContactorUpdate('setState-1');
           if (requiresDelay) {
             await Tools.delay(5000);
           }
           this.knownStates.contactor_primary = true;
-          await this.sendContactorUpdate();
+          await this.sendContactorUpdate('setState-2');
           if (this.knownStates.contactor_generator === true) {
             await Tools.delay(60000);
             this.knownStates.contactor_generator = false;
-            await this.sendContactorUpdate();
+            await this.sendContactorUpdate('setState-3');
             await Tools.delay(5000);
           }
           await Tools.delay(5000);
           this.knownStates.contactor_secondary = true;
-          await this.sendContactorUpdate();
+          await this.sendContactorUpdate('setState-4');
           this.knownStates.systemBusy = false;
         }
         return;
@@ -181,7 +181,7 @@ export class Service extends ServicesBase<
             this.knownStates.power_secondary === true ? true : false;
           this.knownStates.contactor_generator = true;
           if (!geniState) this.knownStates.contactor_secondary = false;
-          await this.sendContactorUpdate();
+          await this.sendContactorUpdate('setState-5');
 
           let maxWarmupTime = 60; //s
           await Tools.delay(10000);
@@ -189,21 +189,21 @@ export class Service extends ServicesBase<
           maxWarmupTime = maxWarmupTime - 10;
           if (this.knownStates.power_secondary !== true) {
             this.knownStates.contactor_generator = false;
-            await this.sendContactorUpdate();
+            await this.sendContactorUpdate('setState-6');
             await Tools.delay(5000);
             maxWarmupTime = maxWarmupTime - 5;
             this.knownStates.contactor_generator = true;
-            await this.sendContactorUpdate();
+            await this.sendContactorUpdate('setState-7');
             await Tools.delay(10000);
             maxWarmupTime = maxWarmupTime - 10;
           }
           if (this.knownStates.power_secondary !== true) {
             this.knownStates.contactor_generator = false;
-            await this.sendContactorUpdate();
+            await this.sendContactorUpdate('setState-8');
             await Tools.delay(5000);
             maxWarmupTime = maxWarmupTime - 5;
             this.knownStates.contactor_generator = true;
-            await this.sendContactorUpdate();
+            await this.sendContactorUpdate('setState-9');
             await Tools.delay(10000);
             maxWarmupTime = maxWarmupTime - 10;
           }
@@ -216,7 +216,7 @@ export class Service extends ServicesBase<
             await this.log.error(
               "FAILED TO ANY STATE, WAITING ON KNOWLEDGEMENT"
             );
-            await this.sendContactorUpdate();
+            await this.sendContactorUpdate('setState-10');
             this.knownStates.systemBusy = false;
             return;
           }
@@ -229,7 +229,7 @@ export class Service extends ServicesBase<
             await Tools.delay((maxWarmupTime > 10 ? maxWarmupTime : 10) * 1000);
           }
           this.knownStates.contactor_secondary = true;
-          await this.sendContactorUpdate();
+          await this.sendContactorUpdate('setState-11');
           this.knownStates.systemBusy = false;
         }
         return;
@@ -260,13 +260,13 @@ export class Service extends ServicesBase<
           this.knownStates.contactor_generator = false;
           this.knownStates.contactor_primary = false;
           this.knownStates.contactor_secondary = false;
-          await this.sendContactorUpdate(true);
+          await this.sendContactorUpdate('checkState-1', true);
           await Tools.delay(5000);
           this.knownStates.contactor_primary = true;
-          await this.sendContactorUpdate(true);
+          await this.sendContactorUpdate('checkState-2', true);
           await Tools.delay(5000);
           this.knownStates.contactor_secondary = true;
-          await this.sendContactorUpdate(true);
+          await this.sendContactorUpdate('checkState-3', true);
           this.knownStates.systemState = SysState.Primary;
           this.knownStates.systemBusy = false;
           return;
@@ -274,7 +274,7 @@ export class Service extends ServicesBase<
         this.knownStates.contactor_generator = false;
         this.knownStates.contactor_primary = true;
         this.knownStates.contactor_secondary = true;
-        await this.sendContactorUpdate(true);
+        await this.sendContactorUpdate('checkState-4', true);
         this.knownStates.systemState = SysState.Primary;
         this.knownStates.systemBusy = false;
         return;
@@ -283,13 +283,13 @@ export class Service extends ServicesBase<
           this.knownStates.contactor_generator = true;
           this.knownStates.contactor_primary = false;
           this.knownStates.contactor_secondary = true;
-          await this.sendContactorUpdate(true);
+          await this.sendContactorUpdate('checkState-5', true);
           this.knownStates.systemState = SysState.Secondary;
         } else {
           this.knownStates.contactor_primary = false;
           this.knownStates.contactor_secondary = false;
           this.knownStates.contactor_generator = true;
-          await this.sendContactorUpdate();
+          await this.sendContactorUpdate('checkState-6');
           await Tools.delay(10000);
           if (!this.knownStates.power_secondary) {
             this.knownStates.contactor_generator = false;
@@ -298,7 +298,7 @@ export class Service extends ServicesBase<
             this.knownStates.systemState = SysState.Secondary;
             this.knownStates.contactor_secondary = true;
           }
-          await this.sendContactorUpdate();
+          await this.sendContactorUpdate('checkState-7');
           await Tools.delay(5000);
         }
         this.knownStates.systemBusy = false;
@@ -357,25 +357,25 @@ export class Service extends ServicesBase<
         this.knownStates.systemBusy = true;
         if (stage === 0) {
           this.knownStates.contactor_secondary = false;
-          await this.sendContactorUpdate();
+          await this.sendContactorUpdate('generator-state-wset-1');
           await Tools.delay(5000);
           this.knownStates.contactor_generator = false;
-          await this.sendContactorUpdate();
+          await this.sendContactorUpdate('generator-state-wset-2');
           await Tools.delay(5000);
         } else if (stage === 1) {
           this.knownStates.contactor_secondary = false;
           this.knownStates.contactor_generator = true;
-          await this.sendContactorUpdate();
+          await this.sendContactorUpdate('generator-state-wset-3');
           await Tools.delay(10000);
           if (!this.knownStates.power_secondary) {
             this.knownStates.contactor_generator = false;
-            await this.sendContactorUpdate();
+            await this.sendContactorUpdate('generator-state-wset-4');
             this.knownStates.systemBusy = false;
             return reply.status(202).send("FAILED");
           } else {
             await Tools.delay(5000);
             this.knownStates.contactor_secondary = true;
-            await this.sendContactorUpdate();
+            await this.sendContactorUpdate('generator-state-wset-5');
             this.knownStates.systemBusy = false;
             return reply.status(202).send("OK, ON AND CONNECTED");
           }
@@ -393,19 +393,19 @@ export class Service extends ServicesBase<
       if (stage === 0) {
         this.knownStates.contactor_primary = false;
         this.knownStates.contactor_secondary = false;
-        await this.sendContactorUpdate();
+        await this.sendContactorUpdate('force-wset-1');
         await Tools.delay(5000);
         this.knownStates.contactor_primary = true;
         this.knownStates.contactor_generator = false;
-        await this.sendContactorUpdate();
+        await this.sendContactorUpdate('force-wset-2');
         await Tools.delay(5000);
         this.knownStates.contactor_secondary = true;
-        await this.sendContactorUpdate();
+        await this.sendContactorUpdate('force-wset-3');
       } else if (stage === 1) {
         this.knownStates.contactor_primary = false;
         this.knownStates.contactor_secondary = false;
         this.knownStates.contactor_generator = true;
-        await this.sendContactorUpdate();
+        await this.sendContactorUpdate('force-wset-4');
         await Tools.delay(10000);
         if (!this.knownStates.power_secondary) {
           this.knownStates.contactor_generator = false;
@@ -413,7 +413,7 @@ export class Service extends ServicesBase<
           await Tools.delay(5000);
           this.knownStates.contactor_secondary = true;
         }
-        await this.sendContactorUpdate();
+        await this.sendContactorUpdate('force-wset-5');
         await Tools.delay(5000);
       }
       this.knownStates.systemBusy = false;
@@ -518,12 +518,12 @@ export class Service extends ServicesBase<
         self.log.warn("starting geni in prep for load shedding");
         self.knownStates.contactor_generator = true;
         self.knownStates.contactor_secondary = false;
-        await self.sendContactorUpdate(true);
+        await self.sendContactorUpdate('runLoadSheddingUpdater-prep load shedding', true);
         await Tools.delay(5000);
         if (!this.knownStates.power_secondary) {
           this.knownStates.contactor_generator = false;
           self.knownStates.contactor_secondary = true;
-          await self.sendContactorUpdate(true);
+          await self.sendContactorUpdate('runLoadSheddingUpdater-fail load shedding', true);
           await Tools.delay(10000);
         }
       }
@@ -640,7 +640,8 @@ export class Service extends ServicesBase<
     pin: number;
     state: boolean;
   }> = [];
-  private async sendContactorUpdate(force: boolean = false) {
+  private async sendContactorUpdate(debugMessage:string, force: boolean = false) {
+    this.log.info(debugMessage);
     let pins: Array<{
       pin: number;
       state: boolean;
@@ -696,7 +697,7 @@ export class Service extends ServicesBase<
           return;
 
         self.knownStates.contactor_generator = true;
-        await self.sendContactorUpdate(true);
+        await self.sendContactorUpdate('handleParsedData-timeout', true);
       }, 30000);
     }
 
