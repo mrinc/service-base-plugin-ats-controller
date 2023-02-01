@@ -31,9 +31,12 @@ export class Web {
     const self = this.uSelf;
     await this._fastify.get("//", async (reply) => {
       reply.header("content-type", "text/html");
-      let lines: Array<string> = ["<h1>ATS System</h1>", "<br />"];
+      let lines: Array<string> = ["<h1>ATS System</h1>", "<span>"+new Date().toString()+"</span>", "<br />"];
 
       const knownStates = self.knownStates as any;
+      lines.push('<div style="display: flex; flex-direction: row; flex-wrap: wrap; justify-content: flex-start; align-items: flex-start; align-content: flex-start; gap: 10px; ">');
+      lines.push('<style>.item { background: white; border-radius: 5px; }</style>');
+      lines.push('<div class="item">');
       lines.push('<h5 style="display: inline-block;">KNOWN STATES</h5>');
       for (let key of Object.keys(knownStates)) {
         let state: any = undefined;
@@ -65,6 +68,8 @@ export class Web {
             (state || "UNKNOWN")
         );
       }
+      lines.push('</div>');
+      lines.push('<div class="item">');
       const loadSheddingState = self.loadSheddingState as any;
       lines.push('<h5 style="display: inline-block;">LOAD SHEDDING</h5>');
       for (let key of Object.keys(loadSheddingState)) {
@@ -84,6 +89,8 @@ export class Web {
             (state || "UNKNOWN")
         );
       }
+      lines.push('</div>');
+      lines.push('<div class="item">');
       const inputs = self.inputs.getState() as any;
       lines.push('<h5 style="display: inline-block;">INPUTS</h5>');
       for (let key of Object.keys(inputs)) {
@@ -103,6 +110,8 @@ export class Web {
             (state || "UNKNOWN")
         );
       }
+      lines.push('</div>');
+      lines.push('<div class="item">');
       const outputs = self.outputs.getState() as any;
       lines.push('<h5 style="display: inline-block;">OUTPUTS</h5>');
       for (let key of Object.keys(outputs)) {
@@ -122,11 +131,15 @@ export class Web {
             (state || "UNKNOWN")
         );
       }
+      lines.push('</div>');
+      lines.push('<div class="item">');
       lines.push('<h5 style="display: inline-block;">INFO</h5>');
       lines.push(
         '<b style="display: inline-block;">TIME:</b>' +
           new Date().toLocaleString()
       );
+      lines.push('</div>');
+      lines.push('<div class="item">');
       lines.push('<h5 style="display: inline-block;">SYSTEM STATE LOGS</h5>');
       // loop through _latestSystemBusyPoint with an index, make the first item bold, and the rest normal
       for (let index = 0; index < self._latestSystemBusyPoint.length; index++) {
@@ -140,8 +153,10 @@ export class Web {
             ">"
         );
       }
+      lines.push('</div>');
+      lines.push('</div>');
       reply.send(
-        '<html><head><meta http-equiv="refresh" content="1"></head><body>' +
+        '<html><head><meta http-equiv="refresh" content="1"></head><body style="background: rgb(242, 242, 242);">' +
           lines.join("<br />") +
           "</body></html>"
       );
