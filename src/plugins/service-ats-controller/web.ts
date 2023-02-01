@@ -38,6 +38,9 @@ export class Web {
         '<div style="display: flex; flex-direction: row; flex-wrap: wrap; justify-content: flex-start; align-items: flex-start; align-content: flex-start; gap: 10px; ">'
       );
       lines.push(
+        "<style>.item-ball { width: 15px; height: 15px; border-radius: 50%; }</style>"
+      );
+      lines.push(
         "<style>.item { background: white; border-radius: 10px; box-shadow: 0px 10px 15px -3px rgba(0,0,0,0.1); padding: 20px; }</style>"
       );
       lines.push(
@@ -56,7 +59,7 @@ export class Web {
       for (let key of Object.keys(knownStates)) {
         let state: any = undefined;
         if (Tools.isBoolean(knownStates[key])) {
-          state = knownStates[key] == true ? "ON" : "OFF";
+          state = `<div class="item-ball" style="background: ${knownStates[key] != true ? "cyan" : "orange"}"></div>`;
         } else if (["systemState"].indexOf(key) >= 0) {
           state =
             knownStates[key] === SysState.Primary
@@ -90,7 +93,7 @@ export class Web {
       for (let key of Object.keys(loadSheddingState)) {
         let state: any = undefined;
         if (Tools.isBoolean(loadSheddingState[key])) {
-          state = loadSheddingState[key] == true ? "YES" : "NO";
+          state = `<div class="item-ball" style="background: ${loadSheddingState[key] !== true ? "green" : "red"}"></div>`;
         } else if (Tools.isNumber(loadSheddingState[key])) {
           state = loadSheddingState[key].toString();
         } else {
@@ -110,7 +113,7 @@ export class Web {
       for (let key of Object.keys(inputs)) {
         let state: any = undefined;
         if (Tools.isBoolean(inputs[key])) {
-          state = inputs[key] == true ? "YES" : "NO";
+          state = `<div class="item-ball" style="background: ${inputs[key] == true ? "green" : "red"}"></div>`;
         } else if (Tools.isNumber(inputs[key])) {
           state = inputs[key].toString();
         } else {
@@ -130,7 +133,7 @@ export class Web {
       for (let key of Object.keys(outputs)) {
         let state: any = undefined;
         if (Tools.isBoolean(outputs[key])) {
-          state = outputs[key] == true ? "YES" : "NO";
+          state = `<div class="item-ball" style="background: ${outputs[key] == true ? "green" : "red"}"></div>`;
         } else if (Tools.isNumber(outputs[key])) {
           state = outputs[key].toString();
         } else {
