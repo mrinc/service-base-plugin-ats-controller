@@ -25,7 +25,7 @@ export class Outputs {
   };
   private _gpio: raspPIGPIO;
   private log: IPluginLogger;
-  private metrics: any;
+  private metrics: any = {};
   constructor(self: Service) {
     this.log = self.log;
     this._gpio = new raspPIGPIO(self);

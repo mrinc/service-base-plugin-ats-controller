@@ -59,7 +59,7 @@ export class Inputs {
     counter_last_db_power: Number.MIN_VALUE,
     counter_last_lastPing: MAX_PING_COUNT,
   };
-  private metrics: any;
+  private metrics: any = {};
   private counterTimer!: NodeJS.Timer;
   constructor(self: Service) {
     this.log = self.log;
