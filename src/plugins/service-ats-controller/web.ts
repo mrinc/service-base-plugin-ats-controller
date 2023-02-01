@@ -35,9 +35,14 @@ export class Web {
 
       const knownStates = self.knownStates as any;
       lines.push('<div style="display: flex; flex-direction: row; flex-wrap: wrap; justify-content: flex-start; align-items: flex-start; align-content: flex-start; gap: 10px; ">');
-      lines.push('<style>.item { background: white; border-radius: 5px; }</style>');
+      lines.push('<style>.item { background: white; border-radius: 10px; box-shadow: 0px 10px 15px -3px rgba(0,0,0,0.1); padding: 20px; }</style>');
+      lines.push('<style>.item h5 { display: inline-block; margin: 0; margin-bottom: 10px; font-size: 20px; }</style>');
+      lines.push('<style>.item > br:first-child { display: none; }</style>');
+      lines.push('<style>.item > .litem { display: block; }</style>');
+      lines.push('<style>.item > .litem > b, .item > .litem > span { display: inline-block; }</style>');
+      lines.push('<style>.item > .litem > span { float: right }</style>');
       lines.push('<div class="item">');
-      lines.push('<h5 style="display: inline-block;">KNOWN STATES</h5>');
+      lines.push('<h5>KNOWN STATES</h5>');
       for (let key of Object.keys(knownStates)) {
         let state: any = undefined;
         if (Tools.isBoolean(knownStates[key])) {
@@ -61,17 +66,12 @@ export class Web {
           state = knownStates[key];
         }
 
-        lines.push(
-          '<b style="display: inline-block;">' +
-            key +
-            ":</b>" +
-            (state || "UNKNOWN")
-        );
+        lines.push(`<div class="litem"><b>${key}</b>: <span>${ (state || "UNKNOWN")}</span></div>`);
       }
       lines.push('</div>');
       lines.push('<div class="item">');
       const loadSheddingState = self.loadSheddingState as any;
-      lines.push('<h5 style="display: inline-block;">LOAD SHEDDING</h5>');
+      lines.push('<h5>LOAD SHEDDING</h5>');
       for (let key of Object.keys(loadSheddingState)) {
         let state: any = undefined;
         if (Tools.isBoolean(loadSheddingState[key])) {
@@ -82,17 +82,12 @@ export class Web {
           state = loadSheddingState[key];
         }
 
-        lines.push(
-          '<b style="display: inline-block;">' +
-            key +
-            ":</b>" +
-            (state || "UNKNOWN")
-        );
+        lines.push(`<div class="litem"><b>${key}</b>: <span>${ (state || "UNKNOWN")}</span></div>`);
       }
       lines.push('</div>');
       lines.push('<div class="item">');
       const inputs = self.inputs.getState() as any;
-      lines.push('<h5 style="display: inline-block;">INPUTS</h5>');
+      lines.push('<h5>INPUTS</h5>');
       for (let key of Object.keys(inputs)) {
         let state: any = undefined;
         if (Tools.isBoolean(inputs[key])) {
@@ -103,17 +98,12 @@ export class Web {
           state = inputs[key];
         }
 
-        lines.push(
-          '<b style="display: inline-block;">' +
-            key +
-            ":</b>" +
-            (state || "UNKNOWN")
-        );
+        lines.push(`<div class="litem"><b>${key}</b>: <span>${ (state || "UNKNOWN")}</span></div>`);
       }
       lines.push('</div>');
       lines.push('<div class="item">');
       const outputs = self.outputs.getState() as any;
-      lines.push('<h5 style="display: inline-block;">OUTPUTS</h5>');
+      lines.push('<h5>OUTPUTS</h5>');
       for (let key of Object.keys(outputs)) {
         let state: any = undefined;
         if (Tools.isBoolean(outputs[key])) {
@@ -124,23 +114,18 @@ export class Web {
           state = outputs[key];
         }
 
-        lines.push(
-          '<b style="display: inline-block;">' +
-            key +
-            ":</b>" +
-            (state || "UNKNOWN")
-        );
+        lines.push(`<div class="litem"><b>${key}</b>: <span>${ (state || "UNKNOWN")}</span></div>`);
       }
       lines.push('</div>');
       lines.push('<div class="item">');
-      lines.push('<h5 style="display: inline-block;">INFO</h5>');
+      lines.push('<h5>INFO</h5>');
       lines.push(
         '<b style="display: inline-block;">TIME:</b>' +
           new Date().toLocaleString()
       );
       lines.push('</div>');
       lines.push('<div class="item">');
-      lines.push('<h5 style="display: inline-block;">SYSTEM STATE LOGS</h5>');
+      lines.push('<h5>SYSTEM STATE LOGS</h5>');
       // loop through _latestSystemBusyPoint with an index, make the first item bold, and the rest normal
       for (let index = 0; index < self._latestSystemBusyPoint.length; index++) {
         lines.push(
