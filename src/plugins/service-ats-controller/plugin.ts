@@ -48,8 +48,8 @@ export class Service extends ServicesBase<
   public _latestSystemBusyPoint: Array<string> = ["boot"];
   public set latestSystemBusyPoint (value: string) {
     this._latestSystemBusyPoint.unshift(value);
-    if (this._latestSystemBusyPoint.length > 10) {
-      this._latestSystemBusyPoint = this._latestSystemBusyPoint.splice(0, 10);
+    if (this._latestSystemBusyPoint.length > 50) {
+      this._latestSystemBusyPoint = this._latestSystemBusyPoint.splice(0, 50);
     }
   }
 
@@ -431,7 +431,7 @@ export class Service extends ServicesBase<
         return;
       }
       self.knownStates.systemBusy = true;
-      self.latestSystemBusyPoint = "System check : check state";
+      self.latestSystemBusyPoint = "System check : check state - " + new Date().toString();
 
       await self.log.info("RUNNING SYSTEM CHECK");
       if (currentState.power_primary) {
