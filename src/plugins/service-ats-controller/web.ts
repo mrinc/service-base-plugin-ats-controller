@@ -127,6 +127,19 @@ export class Web {
         '<b style="display: inline-block;">TIME:</b>' +
           new Date().toLocaleString()
       );
+      lines.push('<h5 style="display: inline-block;">SYSTEM STATE LOGS</h5>');
+      // loop through _latestSystemBusyPoint with an index, make the first item bold, and the rest normal
+      for (let index = 0; index < self._latestSystemBusyPoint.length; index++) {
+        lines.push(
+          "<" +
+            (index === 0 ? "b" : "span") +
+            ' style="display: inline-block;">' +
+            self._latestSystemBusyPoint[index] +
+            "</" +
+            (index === 0 ? "b" : "span") +
+            ">"
+        );
+      }
       reply.send(
         '<html><head><meta http-equiv="refresh" content="1"></head><body>' +
           lines.join("<br />") +

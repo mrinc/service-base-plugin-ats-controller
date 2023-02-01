@@ -45,6 +45,14 @@ export class Service extends ServicesBase<
     //contactor_generator_last_warmupTime: 0,
     //contactor_generator_startup_count: 0,
   };
+  public _latestSystemBusyPoint: Array<string> = ["boot"];
+  public set latestSystemBusyPoint (value: string) {
+    this._latestSystemBusyPoint.unshift(value);
+    if (this._latestSystemBusyPoint.length > 10) {
+      this._latestSystemBusyPoint = this._latestSystemBusyPoint.splice(0, 10);
+    }
+  }
+
   private loadSheddingTimer: NodeJS.Timer | null = null;
   private counterTimer: NodeJS.Timer | null = null;
   public loadShedding!: loadshedding;
@@ -58,11 +66,11 @@ export class Service extends ServicesBase<
     log: IPluginLogger
   ) {
     super(pluginName, cwd, pluginCwd, log);
+    const self = this;
     this.outputs = new Outputs(this);
     this.inputs = new Inputs(this);
     this.web = new Web(this);
 
-    const self = this;
     for (let key of Object.keys(this.knownStates)) {
       this.metrics[key] = tx2.metric({
         name: key,
@@ -269,19 +277,27 @@ export class Service extends ServicesBase<
         relayStates.contactor_generator === false &&
         powerStates.power_secondary === false
       ) {
-        self.knownStates.systemBusy = true;
-        await self.log.warn("starting geni in prep for load shedding");
-        await self.sendContactorUpdate(null, false, true);
-        await Tools.delay(15000);
-        powerStates = self.inputs.getState();
-        if (!powerStates.power_secondary) {
-          await self.sendContactorUpdate(null, true, false);
-          await self.log.error("FAILED TO PREP GENI FOR LOAD SHEDDING!");
-        } else {
-          self.knownStates.systemPreppedForLoadShedding = true;
+        if (!self.knownStates.systemBusy) {
+          self.knownStates.systemBusy = true;
+          self.latestSystemBusyPoint =
+            "Load shedding updator : trigger generator";
+          await self.log.warn("starting geni in prep for load shedding");
+          await self.sendContactorUpdate(null, false, true);
+          await Tools.delay(15000);
+          powerStates = self.inputs.getState();
+          self.latestSystemBusyPoint =
+            "Load shedding updator : check generator";
+          if (!powerStates.power_secondary) {
+            await self.sendContactorUpdate(null, true, false);
+            await self.log.error("FAILED TO PREP GENI FOR LOAD SHEDDING!");
+          } else {
+            self.knownStates.systemPreppedForLoadShedding = true;
+          }
+          self.latestSystemBusyPoint =
+            "Load shedding updator : generator started";
+          await Tools.delay(5000);
+          self.knownStates.systemBusy = false;
         }
-        await Tools.delay(5000);
-        self.knownStates.systemBusy = false;
       }
 
       self.loadSheddingState.timeHUntilNextLS = timeBeforeLSH;
@@ -308,25 +324,39 @@ export class Service extends ServicesBase<
     //await this.sendContactorUpdate(true);
     const self = this;
     this.knownStates.systemBusy = true;
+    self.latestSystemBusyPoint = "System Run : system check";
     setTimeout(async () => {
+      self.latestSystemBusyPoint = "System Run : init system";
       await this.log.warn("checking sys state [{state}]", {
         state: this.knownStates.systemState,
       });
+      self.latestSystemBusyPoint = "System Run : wait for inputs";
       while (!self.inputs.isReady) await Tools.delay(1000);
       let currentState = self.inputs.getState();
 
+      self.latestSystemBusyPoint = "System Run : set state";
       if (currentState.power_primary) {
         if (currentState.power_secondary) {
+          self.latestSystemBusyPoint = "System Run : restore to primary";
           await self.sendContactorUpdate(false, false, null);
           await Tools.delay(5000);
+          self.latestSystemBusyPoint =
+            "System Run : restore to primary : switch off geni";
           await self.sendContactorUpdate(true, false, false);
           await Tools.delay(15000);
+          self.latestSystemBusyPoint =
+            "System Run : restore to primary : final";
           await self.sendContactorUpdate(true, true, false);
           self.knownStates.systemState = SysState.Primary;
+          self.latestSystemBusyPoint =
+            "System Run : restore to primary : complete";
         } else {
+          self.latestSystemBusyPoint = "System Run : activate primary";
           await self.sendContactorUpdate(true, false, false);
           await Tools.delay(5000);
           await self.sendContactorUpdate(true, true, false);
+          self.latestSystemBusyPoint =
+            "System Run : activate primary : complete";
           self.knownStates.systemState = SysState.Primary;
         }
       } else {
@@ -334,19 +364,29 @@ export class Service extends ServicesBase<
           await self.sendContactorUpdate(false, true, true);
           self.knownStates.systemState = SysState.Secondary;
         } else {
+          self.latestSystemBusyPoint =
+            "System Run : restore to secondary";
           await self.sendContactorUpdate(false, false, false);
           await Tools.delay(5000);
+          self.latestSystemBusyPoint =
+            "System Run : restore to secondary : start generator";
           await self.sendContactorUpdate(false, false, true);
           await Tools.delay(15000);
           currentState = self.inputs.getState();
+          self.latestSystemBusyPoint =
+            "System Run : restore to secondary : check generator";
           if (!currentState.power_secondary) {
             await self.sendContactorUpdate(true, true, false);
+            self.latestSystemBusyPoint =
+              "System Run : restore to secondary : fail safe";
             await self.log.error(
               "FAILED TO START GENERATOR: RESTART BSB TO RE-AQUIRE"
             );
             //return;
           } else {
             await Tools.delay(15000);
+            self.latestSystemBusyPoint =
+              "System Run : restore to secondary: complete";
             await self.sendContactorUpdate(false, true, true);
             self.knownStates.systemState = SysState.Secondary;
           }
@@ -357,25 +397,28 @@ export class Service extends ServicesBase<
       } else {
         self.knownStates.systemError = false;
       }
+      self.latestSystemBusyPoint = "";
       self.knownStates.systemBusy = false;
-    }, 1000);
+    }, 500);
+    self.latestSystemBusyPoint = "System Run : setup timers";
     this.loadSheddingTimer = setInterval(async () => {
       self.runLoadSheddingUpdater();
     }, 60000);
     this.counterTimer = setInterval(async () => {
       let currentState = self.inputs.getState();
       let relayStates = self.outputs.getState();
-      
-      if (currentState.power_secondary)
-        self.knownStates.generator_runtime++;
+
+      if (currentState.power_secondary) self.knownStates.generator_runtime++;
       else self.knownStates.generator_runtime = 0;
 
       if (currentState.power_secondary && !relayStates.contactor_secondary)
         self.knownStates.generator_runtime++;
       else self.knownStates.generator_runtime_notinuse = 0;
 
-      if (self.knownStates.generator_runtime_notinuse > (15*60)) {
-        await self.log.warn('GENERATOR RUNNING FOR MORE THAN 15 MINUTES WITHOUT BEING IN USE... WE ARE GOING TO SHUT IT DOWN');
+      if (self.knownStates.generator_runtime_notinuse > 15 * 60) {
+        await self.log.warn(
+          "GENERATOR RUNNING FOR MORE THAN 15 MINUTES WITHOUT BEING IN USE... WE ARE GOING TO SHUT IT DOWN"
+        );
         await self.sendContactorUpdate(null, null, false);
       }
 
@@ -383,77 +426,119 @@ export class Service extends ServicesBase<
         await self.log.error("CANNOT FUNCTION: SYSTEM ERROR");
         return;
       }
-      if (self.knownStates.systemBusy) return;
+      if (self.knownStates.systemBusy) {
+        await self.log.warn(" - system busy....");
+        return;
+      }
       self.knownStates.systemBusy = true;
+      self.latestSystemBusyPoint = "System check : check state";
 
-      await self.log.info('RUNNING SYSTEM CHECK');
+      await self.log.info("RUNNING SYSTEM CHECK");
       if (currentState.power_primary) {
         if (!relayStates.contactor_primary) {
           if (currentState.power_secondary) {
-            await self.log.info(' - RETURN TO PRIMARY');
+            self.latestSystemBusyPoint =
+              "System check : restore primary : 120s check";
+            await self.log.info(" - RETURN TO PRIMARY");
             //if (!self.knownStates.systemPreppedForLoadShedding) {
             await Tools.delay(120000);
             currentState = self.inputs.getState();
+            self.latestSystemBusyPoint =
+              "System check : restore primary : check primary still powered";
             if (currentState.power_primary) {
+              self.latestSystemBusyPoint =
+                "System check : restore primary : disable all relays";
               await self.sendContactorUpdate(false, false, null);
               await Tools.delay(5000);
+              self.latestSystemBusyPoint =
+                "System check : restore primary : activate primary";
               await self.sendContactorUpdate(true, false, null);
               await Tools.delay(30000);
+              self.latestSystemBusyPoint =
+                "System check : restore primary : kill geni";
               await self.sendContactorUpdate(true, false, false);
+              await Tools.delay(5000);
+              await self.sendContactorUpdate(true, true, false);
+              self.latestSystemBusyPoint =
+                "System check : restore primary : complete";
               self.knownStates.systemState = SysState.Primary;
             } else {
-              await self.log.warn('POWER FAILED TO RESTORE');
+              self.latestSystemBusyPoint =
+                "System check : restore primary : failed to restore";
+              await self.log.warn("POWER FAILED TO RESTORE");
             }
             //}
           } else {
-            await self.log.info(' - SET TO PRIMARY');
+            await self.log.info(" - SET TO PRIMARY");
+            self.latestSystemBusyPoint =
+              "System check : quick primary : restore, all off";
             await self.sendContactorUpdate(false, false, false);
             await Tools.delay(5000);
+            self.latestSystemBusyPoint =
+              "System check : quick primary : activate primary";
             await self.sendContactorUpdate(true, false, false);
             await Tools.delay(5000);
             await self.sendContactorUpdate(true, true, false);
+            self.latestSystemBusyPoint =
+              "System check : quick primary : complete";
             self.knownStates.systemState = SysState.Primary;
           }
         }
       } else {
         if (!relayStates.contactor_secondary) {
-          await self.log.info(' - CHECK SECONDARY');
+          self.latestSystemBusyPoint =
+            "System check : quick secondary : restore, primary off";
+          await self.log.info(" - CHECK SECONDARY");
           await self.sendContactorUpdate(false, null, null);
           if (currentState.power_secondary) {
-            await self.log.info(' - RESTORE TO SECONDARY');
+            self.latestSystemBusyPoint =
+              "System check : quick secondary : restore";
+            await self.log.info(" - RESTORE TO SECONDARY");
             // geni most likely running
             await Tools.delay(5000);
+            self.latestSystemBusyPoint =
+              "System check : quick secondary : complete:";
             await self.sendContactorUpdate(false, true, true);
             self.knownStates.systemState = SysState.Secondary;
             self.knownStates.systemPreppedForLoadShedding = false;
           } else {
-            await self.log.info(' - ACTIVATE GENERATOR');
+            self.latestSystemBusyPoint =
+              "System check : restore secondary : start generator";
+            await self.log.info(" - ACTIVATE GENERATOR");
             await self.sendContactorUpdate(false, false, true);
             await Tools.delay(15000);
+            self.latestSystemBusyPoint =
+              "System check : restore secondary : check generator";
             currentState = self.inputs.getState();
             if (!currentState.power_secondary) {
-              await self.sendContactorUpdate(false, false, false);
               await self.sendContactorUpdate(true, true, false);
+              self.latestSystemBusyPoint =
+                "System check : restore secondary : generator failed";
               await self.log.error(
                 "FAILED TO START GENERATOR: RESTART BSB TO RE-AQUIRE"
               );
               self.knownStates.systemError = true;
             } else {
-              await self.log.info(' - ACTIVATE SECONDARY');
+              self.latestSystemBusyPoint =
+                "System check : restore secondary : warming generator";
+              await self.log.info(" - ACTIVATE SECONDARY");
               await Tools.delay(45000);
+              self.latestSystemBusyPoint =
+                "System check : restore secondary : complete";
               await self.sendContactorUpdate(false, true, true);
               self.knownStates.systemState = SysState.Secondary;
               self.knownStates.systemPreppedForLoadShedding = false;
             }
           }
         } else if (!currentState.power_secondary) {
-          await self.log.error(
-            "NO POWER ON SECONDARY!"
-          );
+          self.latestSystemBusyPoint =
+            "System check : restore secondary : failed, no power";
+          await self.log.error("NO POWER ON SECONDARY!");
           await self.sendContactorUpdate(false, false, false);
         }
       }
 
+      self.latestSystemBusyPoint = "";
       self.knownStates.systemBusy = false;
       // self.knownStates.counter_last_db_power--;
       // self.knownStates.counter_last_lastPing--;
