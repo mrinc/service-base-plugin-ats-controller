@@ -1,6 +1,8 @@
 import { Service, SysState } from "./plugin";
 import { Tools } from "@bettercorp/tools";
 import { fastify } from "@bettercorp/service-base-plugin-web-server";
+import { readFileSync } from "fs";
+import { join } from "path";
 
 export class Web {
   private _fastify!: fastify;
@@ -14,6 +16,7 @@ export class Web {
     await this.getSetLoadshedding();
     await this.generator();
     await this.other();
+    await this.getDash();
     await this.getStates();
   }
 
@@ -25,6 +28,58 @@ export class Web {
       self.loadShedding.updateStage(stage);
       self.runLoadSheddingUpdater();
       return reply.redirect("/");
+    });
+  }
+  private async getDash() {
+    const self = this.uSelf;
+    await this._fastify.get("/overview/", async (reply) => {
+      reply.header("content-type", "text/html");
+      let atsFile = readFileSync(
+        join(self.pluginCWD, "./content/ATS.html")
+      ).toString();
+
+      const inputs = self.inputs.getState();
+      const outputs = self.outputs.getState();
+
+      atsFile = atsFile.replace(
+        "{eskom_colour}",
+        inputs.power_primary ? "green" : "red"
+      );
+      atsFile = atsFile.replace(
+        "{generator_colour}",
+        inputs.power_secondary ? "green" : "red"
+      );
+      atsFile = atsFile.replace(
+        "{db_colour}",
+        inputs.power_DB ? "green" : "red"
+      );
+      atsFile = atsFile.replace(
+        "{red_colour}",
+        inputs.power_DB_red ? "green" : "red"
+      );
+      atsFile = atsFile.replace(
+        "{ups_colour}",
+        inputs.power_UPS ? "green" : "red"
+      );
+      atsFile = atsFile.replace(
+        "{house_blue_colour}",
+        inputs.power_blue_house ? "green" : "red"
+      );
+      atsFile = atsFile.replace(
+        "{rack_blue_colour}",
+        inputs.power_blue_core ? "green" : "red"
+      );
+
+      atsFile = atsFile.replace(
+        "{primary_colour}",
+        outputs.contactor_primary ? "green" : "red"
+      );
+      atsFile = atsFile.replace(
+        "{secondary_colour}",
+        outputs.contactor_secondary ? "green" : "red"
+      );
+
+      reply.send(atsFile);
     });
   }
   private async getStates() {
@@ -59,7 +114,9 @@ export class Web {
       for (let key of Object.keys(knownStates)) {
         let state: any = undefined;
         if (Tools.isBoolean(knownStates[key])) {
-          state = `<div class="item-ball" style="background: ${knownStates[key] != true ? "cyan" : "orange"}"></div>`;
+          state = `<div class="item-ball" style="background: ${
+            knownStates[key] != true ? "cyan" : "orange"
+          }"></div>`;
         } else if (["systemState"].indexOf(key) >= 0) {
           state =
             knownStates[key] === SysState.Primary
@@ -85,7 +142,9 @@ export class Web {
           }</span></div>`
         );
       }
-      lines.push(`<div class="litem"><b>TIME</b>: <span>${new Date().toLocaleString()}</span></div>`);
+      lines.push(
+        `<div class="litem"><b>TIME</b>: <span>${new Date().toLocaleString()}</span></div>`
+      );
       lines.push("</div>");
       lines.push('<div class="item">');
       const loadSheddingState = self.loadSheddingState as any;
@@ -93,7 +152,9 @@ export class Web {
       for (let key of Object.keys(loadSheddingState)) {
         let state: any = undefined;
         if (Tools.isBoolean(loadSheddingState[key])) {
-          state = `<div class="item-ball" style="background: ${loadSheddingState[key] !== true ? "green" : "red"}"></div>`;
+          state = `<div class="item-ball" style="background: ${
+            loadSheddingState[key] !== true ? "green" : "red"
+          }"></div>`;
         } else if (Tools.isNumber(loadSheddingState[key])) {
           state = loadSheddingState[key].toString();
         } else {
@@ -113,7 +174,9 @@ export class Web {
       for (let key of Object.keys(inputs)) {
         let state: any = undefined;
         if (Tools.isBoolean(inputs[key])) {
-          state = `<div class="item-ball" style="background: ${inputs[key] == true ? "green" : "red"}"></div>`;
+          state = `<div class="item-ball" style="background: ${
+            inputs[key] == true ? "green" : "red"
+          }"></div>`;
         } else if (Tools.isNumber(inputs[key])) {
           state = inputs[key].toString();
         } else {
@@ -133,7 +196,9 @@ export class Web {
       for (let key of Object.keys(outputs)) {
         let state: any = undefined;
         if (Tools.isBoolean(outputs[key])) {
-          state = `<div class="item-ball" style="background: ${outputs[key] == true ? "green" : "red"}"></div>`;
+          state = `<div class="item-ball" style="background: ${
+            outputs[key] == true ? "green" : "red"
+          }"></div>`;
         } else if (Tools.isNumber(outputs[key])) {
           state = outputs[key].toString();
         } else {
@@ -158,7 +223,7 @@ export class Web {
       lines.push("<h5>SYSTEM STATE LOGS</h5>");
       // loop through _latestSystemBusyPoint with an index, make the first item bold, and the rest normal
       for (let index = 0; index < self._latestSystemBusyPoint.length; index++) {
-        if (self._latestSystemBusyPoint[index].indexOf(':') < 0) continue;
+        if (self._latestSystemBusyPoint[index].indexOf(":") < 0) continue;
         let workingContent = self._latestSystemBusyPoint[index].split(":");
         if (workingContent.length < 2) continue;
         lines.push(

@@ -73,6 +73,9 @@ export class Service extends ServicesBase<
   public outputs: Outputs;
   public inputs: Inputs;
   private web: Web;
+  public get pluginCWD(): string {
+    return this.pluginCwd;
+  }
   constructor(
     pluginName: string,
     cwd: string,
