@@ -40,7 +40,8 @@ export class Service extends ServicesBase<
     systemError: false,
     systemPreppedForLoadShedding: false,
     systemState: SysState.Unknown,
-    contactor_generator_time: 0,
+    generator_runtime: 0,
+    generator_runtime_notinuse: 0,
     //contactor_generator_last_warmupTime: 0,
     //contactor_generator_startup_count: 0,
   };
@@ -363,20 +364,31 @@ export class Service extends ServicesBase<
     }, 60000);
     this.counterTimer = setInterval(async () => {
       let currentState = self.inputs.getState();
+      let relayStates = self.outputs.getState();
+      
       if (currentState.power_secondary)
-        self.knownStates.contactor_generator_time++;
-      else self.knownStates.contactor_generator_time = 0;
+        self.knownStates.generator_runtime++;
+      else self.knownStates.generator_runtime = 0;
+
+      if (currentState.power_secondary && !relayStates.contactor_secondary)
+        self.knownStates.generator_runtime++;
+      else self.knownStates.generator_runtime_notinuse = 0;
+
+      if (self.knownStates.generator_runtime_notinuse > (15*60)) {
+        await self.log.warn('GENERATOR RUNNING FOR MORE THAN 15 MINUTES WITHOUT BEING IN USE... WE ARE GOING TO SHUT IT DOWN');
+        await self.sendContactorUpdate(null, null, false);
+      }
+
       if (self.knownStates.systemError) {
         await self.log.error("CANNOT FUNCTION: SYSTEM ERROR");
         return;
       }
       if (self.knownStates.systemBusy) return;
       self.knownStates.systemBusy = true;
-      let relayStates = self.outputs.getState();
 
       await self.log.info('RUNNING SYSTEM CHECK');
       if (currentState.power_primary) {
-        if (relayStates.contactor_primary) { // negative power
+        if (!relayStates.contactor_primary) {
           if (currentState.power_secondary) {
             await self.log.info(' - RETURN TO PRIMARY');
             //if (!self.knownStates.systemPreppedForLoadShedding) {
@@ -404,7 +416,7 @@ export class Service extends ServicesBase<
           }
         }
       } else {
-        if (relayStates.contactor_secondary) { // negative power
+        if (!relayStates.contactor_secondary) {
           await self.log.info(' - CHECK SECONDARY');
           await self.sendContactorUpdate(false, null, null);
           if (currentState.power_secondary) {

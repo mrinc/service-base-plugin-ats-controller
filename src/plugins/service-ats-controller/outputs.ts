@@ -42,8 +42,12 @@ export class Outputs {
       });
     }
   }
-  public getState() {
-    return this.statesOfRelays;
+  public getState(): RelayState {
+    return {
+      contactor_generator: this.statesOfRelays.contactor_generator,
+      contactor_primary: !this.statesOfRelays.contactor_primary,
+      contactor_secondary: !this.statesOfRelays.contactor_secondary,
+    };
   }
   public async setState(states: IDictionary<boolean | null>) {
     let hasChanges = false;
