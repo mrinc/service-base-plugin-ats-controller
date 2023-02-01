@@ -306,11 +306,11 @@ export class Service extends ServicesBase<
   public override async run(): Promise<void> {
     //await this.sendContactorUpdate(true);
     const self = this;
-    await this.log.warn("checking sys state [{state}]", {
-      state: this.knownStates.systemState,
-    });
     this.knownStates.systemBusy = true;
     setTimeout(async () => {
+      await this.log.warn("checking sys state [{state}]", {
+        state: this.knownStates.systemState,
+      });
       while (!self.inputs.isReady) await Tools.delay(1000);
       let currentState = self.inputs.getState();
 
@@ -374,9 +374,11 @@ export class Service extends ServicesBase<
       self.knownStates.systemBusy = true;
       let relayStates = self.outputs.getState();
 
+      await self.log.info('RUNNING SYSTEM CHECK');
       if (currentState.power_primary) {
         if (!relayStates.contactor_primary) {
           if (currentState.power_secondary) {
+            await self.log.info(' - RETURN TO PRIMARY');
             //if (!self.knownStates.systemPreppedForLoadShedding) {
             await Tools.delay(120000);
             currentState = self.inputs.getState();
@@ -392,6 +394,7 @@ export class Service extends ServicesBase<
             }
             //}
           } else {
+            await self.log.info(' - SET TO PRIMARY');
             await self.sendContactorUpdate(false, false, false);
             await Tools.delay(5000);
             await self.sendContactorUpdate(true, false, false);
@@ -402,14 +405,17 @@ export class Service extends ServicesBase<
         }
       } else {
         if (!relayStates.contactor_secondary) {
+          await self.log.info(' - CHECK SECONDARY');
           await self.sendContactorUpdate(false, null, null);
           if (currentState.power_secondary) {
+            await self.log.info(' - RESTORE TO SECONDARY');
             // geni most likely running
             await Tools.delay(5000);
             await self.sendContactorUpdate(false, true, true);
             self.knownStates.systemState = SysState.Secondary;
             self.knownStates.systemPreppedForLoadShedding = false;
           } else {
+            await self.log.info(' - ACTIVATE GENERATOR');
             await self.sendContactorUpdate(false, false, true);
             await Tools.delay(15000);
             currentState = self.inputs.getState();
@@ -421,6 +427,7 @@ export class Service extends ServicesBase<
               );
               self.knownStates.systemError = true;
             } else {
+              await self.log.info(' - ACTIVATE SECONDARY');
               await Tools.delay(45000);
               await self.sendContactorUpdate(false, true, true);
               self.knownStates.systemState = SysState.Secondary;

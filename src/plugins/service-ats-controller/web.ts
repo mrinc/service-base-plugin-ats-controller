@@ -1,4 +1,4 @@
-import { Service } from "./plugin";
+import { Service, SysState } from "./plugin";
 import { Tools } from "@bettercorp/tools";
 import { fastify } from "@bettercorp/service-base-plugin-web-server";
 
@@ -39,6 +39,13 @@ export class Web {
         let state: any = undefined;
         if (Tools.isBoolean(knownStates[key])) {
           state = knownStates[key] == true ? "ON" : "OFF";
+        } else if (["systemState"].indexOf(key) >= 0) {
+          state =
+            knownStates[key] === SysState.Primary
+              ? "PRIMARY"
+              : knownStates[key] === SysState.Secondary
+              ? "SECONDARY"
+              : "UNKNOWN";
         } else if (
           ["last_db_power", "lastPing", "contactor_generator_time"].indexOf(
             key
@@ -121,7 +128,7 @@ export class Web {
           new Date().toLocaleString()
       );
       reply.send(
-        '<html><head><meta http-equiv="refresh" content="5"></head><body>' +
+        '<html><head><meta http-equiv="refresh" content="1"></head><body>' +
           lines.join("<br />") +
           "</body></html>"
       );

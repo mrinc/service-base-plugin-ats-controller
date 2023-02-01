@@ -70,6 +70,7 @@ export class Outputs {
         state: (this.statesOfRelays as unknown as IDictionary<boolean>)[state],
       });
     }
+    await this.log.info(" - SET RELAYS");
     for (let key of Object.keys(this.statesOfRelays)) {
       await this.log.info(": RELAY {relay} ({pin}) SET TO {state}", {
         pin: PinOutputs[key],
