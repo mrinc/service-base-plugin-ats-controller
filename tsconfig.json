@@ -20,7 +20,7 @@
   "compileOnSave": true,
   "include": [
     "src"
-  ],
+, "src/plugins/service-ats-controller/loadshedding.ts"  ],
   "exclude": [
     "node_modules/**",
     "src/plugins/-*/*.*"
