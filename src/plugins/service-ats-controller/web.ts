@@ -155,7 +155,9 @@ export class Web {
       lines.push("<h5>SYSTEM STATE LOGS</h5>");
       // loop through _latestSystemBusyPoint with an index, make the first item bold, and the rest normal
       for (let index = 0; index < self._latestSystemBusyPoint.length; index++) {
+        if (self._latestSystemBusyPoint.indexOf(':') < 0) continue;
         let workingContent = self._latestSystemBusyPoint[index].split(":");
+        if (workingContent.length < 2) continue;
         lines.push(
           `<div class="litem"><b>${workingContent
             .splice(0, 1)[0]
