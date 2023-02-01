@@ -82,7 +82,7 @@ export class Web {
           }</span></div>`
         );
       }
-      lines.push(`<b>TIME</b>: <span>${new Date().toLocaleString()}</span>`);
+      lines.push(`<div class="litem"><b>TIME</b>: <span>${new Date().toLocaleString()}</span></div>`);
       lines.push("</div>");
       lines.push('<div class="item">');
       const loadSheddingState = self.loadSheddingState as any;
@@ -157,9 +157,9 @@ export class Web {
       for (let index = 0; index < self._latestSystemBusyPoint.length; index++) {
         let workingContent = self._latestSystemBusyPoint[index].split(":");
         lines.push(
-          `<b>${workingContent
+          `<div class="litem"><b>${workingContent
             .splice(0, 1)[0]
-            .trim()}</b>: <span>${workingContent.join(":").trim()}</span>`
+            .trim()}</b>: <span>${workingContent.join(":").trim()}</span></div>`
         );
       }
       lines.push("</div>");
