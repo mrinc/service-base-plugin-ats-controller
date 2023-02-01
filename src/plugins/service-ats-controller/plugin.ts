@@ -220,9 +220,10 @@ export class Service extends ServicesBase<
   ) {
     if (Tools.isString(note))
       await this.log.info("Sending contactor update: {note}", { note });
+    this.latestSystemBusyPoint = `Set : P:${contactor_primary !== null ? (contactor_primary?'1':'0') : '_'} S:${contactor_secondary !== null ? (contactor_secondary?'1':'0') : '_'} G:${contactor_generator !== null ? (contactor_generator?'1':'0') : '_'}`
     await this.outputs.setState({
-      contactor_primary: !contactor_primary,
-      contactor_secondary: !contactor_secondary,
+      contactor_primary: contactor_primary !== null ? !contactor_primary : null,
+      contactor_secondary: contactor_secondary !== null ? !contactor_secondary : null,
       contactor_generator: contactor_generator,
     });
   }
@@ -431,7 +432,7 @@ export class Service extends ServicesBase<
         return;
       }
       self.knownStates.systemBusy = true;
-      self.latestSystemBusyPoint = "System check : check state - " + new Date().toString();
+      ///self.latestSystemBusyPoint = "System check : check state - " + new Date().toString();
 
       await self.log.info("RUNNING SYSTEM CHECK");
       if (currentState.power_primary) {
