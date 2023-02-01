@@ -47,6 +47,7 @@ export class Service extends ServicesBase<
   };
   public _latestSystemBusyPoint: Array<string> = ["boot"];
   public set latestSystemBusyPoint(value: string) {
+    if (value.indexOf(":") < 0) return;
     this._latestSystemBusyPoint.unshift(value);
     if (this._latestSystemBusyPoint.length > 50) {
       this._latestSystemBusyPoint = this._latestSystemBusyPoint.splice(0, 50);
