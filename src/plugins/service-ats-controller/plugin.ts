@@ -376,7 +376,7 @@ export class Service extends ServicesBase<
 
       await self.log.info('RUNNING SYSTEM CHECK');
       if (currentState.power_primary) {
-        if (!relayStates.contactor_primary) {
+        if (relayStates.contactor_primary) { // negative power
           if (currentState.power_secondary) {
             await self.log.info(' - RETURN TO PRIMARY');
             //if (!self.knownStates.systemPreppedForLoadShedding) {
@@ -404,7 +404,7 @@ export class Service extends ServicesBase<
           }
         }
       } else {
-        if (!relayStates.contactor_secondary) {
+        if (relayStates.contactor_secondary) { // negative power
           await self.log.info(' - CHECK SECONDARY');
           await self.sendContactorUpdate(false, null, null);
           if (currentState.power_secondary) {
