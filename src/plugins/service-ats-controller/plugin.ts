@@ -212,8 +212,8 @@ export class Service extends ServicesBase<
     if (Tools.isString(note))
       await this.log.info("Sending contactor update: {note}", { note });
     await this.outputs.setState({
-      contactor_primary: contactor_primary,
-      contactor_secondary: contactor_secondary,
+      contactor_primary: !contactor_primary,
+      contactor_secondary: !contactor_secondary,
       contactor_generator: contactor_generator,
     });
   }
