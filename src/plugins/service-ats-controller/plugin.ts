@@ -39,18 +39,31 @@ export class Service extends ServicesBase<
     systemBusy: false,
     systemError: false,
     systemPreppedForLoadShedding: false,
-    systemState: SysState.Unknown,
+    systemCurrentState: SysState.Unknown,
     generator_runtime: 0,
     generator_runtime_notinuse: 0,
     //contactor_generator_last_warmupTime: 0,
     //contactor_generator_startup_count: 0,
   };
   public _latestSystemBusyPoint: Array<string> = ["boot"];
-  public set latestSystemBusyPoint (value: string) {
+  public set latestSystemBusyPoint(value: string) {
     this._latestSystemBusyPoint.unshift(value);
     if (this._latestSystemBusyPoint.length > 50) {
       this._latestSystemBusyPoint = this._latestSystemBusyPoint.splice(0, 50);
     }
+  }
+  public get systemState(): SysState {
+    return this.knownStates.systemCurrentState;
+  }
+  public set systemState(value: SysState) {
+    this.knownStates.systemCurrentState = value;
+    this.latestSystemBusyPoint =
+      "System State : " +
+      (value === SysState.Primary
+        ? "Primary"
+        : value === SysState.Secondary
+        ? "Secondary"
+        : "Unknown");
   }
 
   private loadSheddingTimer: NodeJS.Timer | null = null;
@@ -108,7 +121,7 @@ export class Service extends ServicesBase<
   // private async setState(systemState: SysState) {
   //   if (this.knownStates.systemBusy)
   //     return await this.log.warn("Cannot change state, busy");
-  //   this.knownStates.systemState = systemState;
+  //   this.systemState = systemState;
 
   //   await this.log.warn("set system state: {state}", { state: systemState });
   //   switch (systemState) {
@@ -220,10 +233,17 @@ export class Service extends ServicesBase<
   ) {
     if (Tools.isString(note))
       await this.log.info("Sending contactor update: {note}", { note });
-    this.latestSystemBusyPoint = `Set : P:${contactor_primary !== null ? (contactor_primary?'1':'0') : '_'} S:${contactor_secondary !== null ? (contactor_secondary?'1':'0') : '_'} G:${contactor_generator !== null ? (contactor_generator?'1':'0') : '_'}`
+    this.latestSystemBusyPoint = `Set : P:${
+      contactor_primary !== null ? (contactor_primary ? "1" : "0") : "_"
+    } S:${
+      contactor_secondary !== null ? (contactor_secondary ? "1" : "0") : "_"
+    } G:${
+      contactor_generator !== null ? (contactor_generator ? "1" : "0") : "_"
+    }`;
     await this.outputs.setState({
       contactor_primary: contactor_primary !== null ? !contactor_primary : null,
-      contactor_secondary: contactor_secondary !== null ? !contactor_secondary : null,
+      contactor_secondary:
+        contactor_secondary !== null ? !contactor_secondary : null,
       contactor_generator: contactor_generator,
     });
   }
@@ -309,7 +329,7 @@ export class Service extends ServicesBase<
     // if (
     //   !self.knownStates.systemBusy &&
     //   self.knownStates.power_primary === true &&
-    //   self.knownStates.systemState === SysState.Primary &&
+    //   self.systemState === SysState.Primary &&
     //   self.knownStates.contactor_generator === true &&
     //   new Date().getTime() - self.knownStates.contactor_generator_time >
     //     (self.loadSheddingState.startGeniMinutesBeforeLoadShedding + 10) *
@@ -317,7 +337,7 @@ export class Service extends ServicesBase<
     //       1000
     // ) {
     //   // 10+ min
-    //   self.knownStates.systemState = SysState.Primary;
+    //   self.systemState = SysState.Primary;
     //   self.checkState();
     // }
   }
@@ -329,7 +349,7 @@ export class Service extends ServicesBase<
     setTimeout(async () => {
       self.latestSystemBusyPoint = "System Run : init system";
       await this.log.warn("checking sys state [{state}]", {
-        state: this.knownStates.systemState,
+        state: this.systemState,
       });
       self.latestSystemBusyPoint = "System Run : wait for inputs";
       while (!self.inputs.isReady) await Tools.delay(1000);
@@ -348,7 +368,7 @@ export class Service extends ServicesBase<
           self.latestSystemBusyPoint =
             "System Run : restore to primary : final";
           await self.sendContactorUpdate(true, true, false);
-          self.knownStates.systemState = SysState.Primary;
+          self.systemState = SysState.Primary;
           self.latestSystemBusyPoint =
             "System Run : restore to primary : complete";
         } else {
@@ -358,15 +378,14 @@ export class Service extends ServicesBase<
           await self.sendContactorUpdate(true, true, false);
           self.latestSystemBusyPoint =
             "System Run : activate primary : complete";
-          self.knownStates.systemState = SysState.Primary;
+          self.systemState = SysState.Primary;
         }
       } else {
         if (currentState.power_secondary) {
           await self.sendContactorUpdate(false, true, true);
-          self.knownStates.systemState = SysState.Secondary;
+          self.systemState = SysState.Secondary;
         } else {
-          self.latestSystemBusyPoint =
-            "System Run : restore to secondary";
+          self.latestSystemBusyPoint = "System Run : restore to secondary";
           await self.sendContactorUpdate(false, false, false);
           await Tools.delay(5000);
           self.latestSystemBusyPoint =
@@ -389,11 +408,11 @@ export class Service extends ServicesBase<
             self.latestSystemBusyPoint =
               "System Run : restore to secondary: complete";
             await self.sendContactorUpdate(false, true, true);
-            self.knownStates.systemState = SysState.Secondary;
+            self.systemState = SysState.Secondary;
           }
         }
       }
-      if (self.knownStates.systemState === SysState.Unknown) {
+      if (self.systemState === SysState.Unknown) {
         self.knownStates.systemError = true;
       } else {
         self.knownStates.systemError = false;
@@ -462,7 +481,7 @@ export class Service extends ServicesBase<
               await self.sendContactorUpdate(true, true, false);
               self.latestSystemBusyPoint =
                 "System check : restore primary : complete";
-              self.knownStates.systemState = SysState.Primary;
+              self.systemState = SysState.Primary;
             } else {
               self.latestSystemBusyPoint =
                 "System check : restore primary : failed to restore";
@@ -482,7 +501,7 @@ export class Service extends ServicesBase<
             await self.sendContactorUpdate(true, true, false);
             self.latestSystemBusyPoint =
               "System check : quick primary : complete";
-            self.knownStates.systemState = SysState.Primary;
+            self.systemState = SysState.Primary;
           }
         }
       } else {
@@ -500,7 +519,7 @@ export class Service extends ServicesBase<
             self.latestSystemBusyPoint =
               "System check : quick secondary : complete:";
             await self.sendContactorUpdate(false, true, true);
-            self.knownStates.systemState = SysState.Secondary;
+            self.systemState = SysState.Secondary;
             self.knownStates.systemPreppedForLoadShedding = false;
           } else {
             self.latestSystemBusyPoint =
@@ -527,7 +546,7 @@ export class Service extends ServicesBase<
               self.latestSystemBusyPoint =
                 "System check : restore secondary : complete";
               await self.sendContactorUpdate(false, true, true);
-              self.knownStates.systemState = SysState.Secondary;
+              self.systemState = SysState.Secondary;
               self.knownStates.systemPreppedForLoadShedding = false;
             }
           }
