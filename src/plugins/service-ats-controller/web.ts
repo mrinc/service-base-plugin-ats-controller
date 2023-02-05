@@ -107,7 +107,7 @@ export class Web {
           "<style>.item-ball { width: 15px; height: 15px; border-radius: 50%; }</style>"
         );
         lines.push(
-          "<style>.item { background: white; border-radius: 10px; box-shadow: 0px 10px 15px -3px rgba(0,0,0,0.1); padding: 20px; }</style>"
+          "<style>.item { background: white; border-radius: 10px; box-shadow: 0px 10px 15px -3px rgba(0,0,0,0.1); padding: 20px; max-width: calc(100% - 40px); width: 300px; }</style>"
         );
         lines.push(
           "<style>.item h5 { display: block; margin: 0; margin-bottom: 10px; font-size: 20px; }</style>"
@@ -117,7 +117,7 @@ export class Web {
           "<style>.item > .litem { display: block; padding-bottom: 7px; }</style>"
         );
         lines.push(
-          "<style>.item > .litem > b, .item > .litem > span { display: inline-block; }</style>"
+          "<style>.item > .litem > b, .item > .litem > span { display: inline-block; max-width: 204px; overflow: hidden; }</style>"
         );
         lines.push("<style>.item > .litem > span { float: right }</style>");
         lines.push('<div class="item">');
@@ -253,7 +253,7 @@ export class Web {
         lines.push("</div>");
         reply.send(
           '<html><head><meta name="viewport" content="width=device-width, initial-scale=1" /><meta http-equiv="refresh" content="1"></head><body style="background: rgb(242, 242, 242);">' +
-            lines.join("<br />") +
+            lines.join("") +
             "</body></html>"
         );
       }
