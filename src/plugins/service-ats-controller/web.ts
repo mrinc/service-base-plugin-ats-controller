@@ -101,7 +101,7 @@ export class Web {
 
         const knownStates = self.knownStates as any;
         lines.push(
-          '<div style="display: flex; flex-direction: row; flex-wrap: wrap; justify-content: flex-start; align-items: flex-start; align-content: flex-start; gap: 10px; ">'
+          '<div style="display: flex; flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: flex-start; align-content: flex-start; gap: 10px; ">'
         );
         lines.push(
           "<style>.item-ball { width: 15px; height: 15px; border-radius: 50%; }</style>"
