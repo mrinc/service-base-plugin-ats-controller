@@ -252,7 +252,7 @@ export class Web {
         lines.push("</div>");
         lines.push("</div>");
         reply.send(
-          '<html><head><meta http-equiv="refresh" content="1"></head><body style="background: rgb(242, 242, 242);">' +
+          '<html><head><meta name="viewport" content="width=device-width, initial-scale=1" /><meta http-equiv="refresh" content="1"></head><body style="background: rgb(242, 242, 242);">' +
             lines.join("<br />") +
             "</body></html>"
         );
