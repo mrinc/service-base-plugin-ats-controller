@@ -28,7 +28,11 @@ export class Outputs {
   private log: IPluginLogger;
   private metrics: any = {};
   private smsportal: smsPortalClient;
-  public sendSmsTo: string | null = null;
+  public sendSms: {
+    to: string;
+    apiKey: string;
+    secret: string;
+  } | null = null;
   constructor(self: Service) {
     this.smsportal = new smsPortalClient(self);
     this.log = self.log;
@@ -68,16 +72,20 @@ export class Outputs {
       }
     }
     if (!hasChanges) return;
-    if (Tools.isString(this.sendSmsTo)) {
+    if (Tools.isString(this.sendSms)) {
       if (
         this.statesOfRelays.contactor_generator !== states.contactor_generator
       ) {
-        await this.smsportal.sendSMS({
-          content: `Generator switched too ${
-            states.contactor_generator ? "ON" : "OFF"
-          }`,
-          destination: this.sendSmsTo,
-        });
+        await this.smsportal.sendSMS(
+          {
+            content: `Generator switched too ${
+              states.contactor_generator ? "ON" : "OFF"
+            }`,
+            destination: this.sendSms.to,
+          },
+          this.sendSms.apiKey,
+          this.sendSms.secret
+        );
       }
     }
     let pins: {

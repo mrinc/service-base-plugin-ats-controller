@@ -253,7 +253,7 @@ export class Service extends ServicesBase<
   }
 
   public override async init(): Promise<void> {
-    this.outputs.sendSmsTo = await (await this.getPluginConfig()).sendGeniSMSTo;
+    this.outputs.sendSms = await (await this.getPluginConfig()).sendGeniSMS;
     //const self = this;
     this.loadShedding = new loadshedding(
       (await this.getPluginConfig()).loadsheddingFile
