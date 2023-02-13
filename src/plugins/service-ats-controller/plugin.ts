@@ -458,7 +458,7 @@ export class Service extends ServicesBase<
       self.knownStates.systemBusy = true;
       ///self.latestSystemBusyPoint = "System check : check state - " + new Date().toString();
 
-      await self.log.info("RUNNING SYSTEM CHECK");
+      await self.log.debug("RUNNING SYSTEM CHECK");
       if (currentState.power_primary) {
         if (!relayStates.contactor_primary) {
           if (currentState.power_secondary) {

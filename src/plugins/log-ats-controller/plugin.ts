@@ -95,7 +95,8 @@ export class Logger extends LoggerBase<PluginConfig> {
       formattedMessage = `[STAT] ${formattedMessage}`;
     }
     if (level === LogLevels.DEBUG) {
-      formattedMessage = `[DEBUG] ${formattedMessage}`;
+      return;
+      //formattedMessage = `[DEBUG] ${formattedMessage}`;
     }
     if (level === LogLevels.INFO) {
       formattedMessage = `[INFO] ${formattedMessage}`;
