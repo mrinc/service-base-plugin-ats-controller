@@ -295,14 +295,15 @@ export class Service extends ServicesBase<
       self.loadSheddingState.startGeniMinLSCounter = -1;
     } else {
       self.loadSheddingState.inLoadShedding = false;
+      self.loadSheddingState.nextLSStartTime = timeBeforeDetail.startTime;
+      self.loadSheddingState.nextLSEndTime = timeBeforeDetail.endTime;
 
       timeBeforeLS = timeBeforeLS / 1000; // s
       timeBeforeLS = timeBeforeLS / 60; // m
       let timeBeforeLSH = Math.floor(timeBeforeLS / 60); // h
 
       self.loadSheddingState.startGeniMinLSCounter =
-        timeBeforeLS -
-        self.loadSheddingState.startGeniMinBeforeLS;
+        timeBeforeLS - self.loadSheddingState.startGeniMinBeforeLS;
       if (self.loadSheddingState.startGeniMinLSCounter < 0)
         self.loadSheddingState.startGeniMinLSCounter = -2;
 
@@ -310,8 +311,7 @@ export class Service extends ServicesBase<
       let powerStates = self.inputs.getState();
 
       if (
-        timeBeforeLS <=
-          self.loadSheddingState.startGeniMinBeforeLS &&
+        timeBeforeLS <= self.loadSheddingState.startGeniMinBeforeLS &&
         relayStates.contactor_generator === false &&
         powerStates.power_secondary === false
       ) {
