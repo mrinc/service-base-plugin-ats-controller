@@ -4,6 +4,7 @@ import { existsSync, writeFileSync } from "fs";
 export interface MyPluginConfig {
   loadsheddingFile: string;
   startGeniMinutesBeforeLoadShedding: number;
+  sendGeniSMSTo: string | null;
 }
 
 export class Config extends SecConfig<MyPluginConfig> {
@@ -16,6 +17,10 @@ export class Config extends SecConfig<MyPluginConfig> {
         existingConfig.loadsheddingFile !== undefined
           ? existingConfig.loadsheddingFile
           : "./loadshedding.json",
+      sendGeniSMSTo:
+        existingConfig.sendGeniSMSTo !== undefined
+          ? existingConfig.sendGeniSMSTo
+          : null,
       startGeniMinutesBeforeLoadShedding:
         existingConfig.startGeniMinutesBeforeLoadShedding !== undefined
           ? existingConfig.startGeniMinutesBeforeLoadShedding

@@ -4,6 +4,7 @@ import { Service } from "./plugin";
 import { IPluginLogger } from "@bettercorp/service-base";
 import * as tx2 from "tx2";
 import { Tools } from "@bettercorp/tools";
+import { smsPortalClient } from "@bettercorp/service-base-plugin-sms";
 
 export const PinOutputs: IDictionary<number> = {
   contactor_primary: 4,
@@ -26,7 +27,10 @@ export class Outputs {
   private _gpio: raspPIGPIO;
   private log: IPluginLogger;
   private metrics: any = {};
+  private smsportal: smsPortalClient;
+  public sendSmsTo: string | null = null;
   constructor(self: Service) {
+    this.smsportal = new smsPortalClient(self);
     this.log = self.log;
     this._gpio = new raspPIGPIO(self);
     const aSelf = this;
@@ -64,6 +68,18 @@ export class Outputs {
       }
     }
     if (!hasChanges) return;
+    if (Tools.isString(this.sendSmsTo)) {
+      if (
+        this.statesOfRelays.contactor_generator !== states.contactor_generator
+      ) {
+        await this.smsportal.sendSMS({
+          content: `Generator switched too ${
+            states.contactor_generator ? "ON" : "OFF"
+          }`,
+          destination: this.sendSmsTo,
+        });
+      }
+    }
     let pins: {
       pin: number;
       state: boolean;
