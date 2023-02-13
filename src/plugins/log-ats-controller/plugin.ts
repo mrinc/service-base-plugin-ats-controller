@@ -55,7 +55,7 @@ export class Logger extends LoggerBase<PluginConfig> {
     if (!Tools.isNullOrUndefined(this.logStream)) {
       if (await this.writeLogLine(log)) return;
       clearTimeout(this.logTimeout);
-      this.logTimeout = setTimeout(this.logTimeoutHandler.bind(this), 1000);
+      this.logTimeout = setTimeout(this.logTimeoutHandler.bind(this), 10000);
       return;
     }
     const logFile = await (await this.getPluginConfig()).logFile!;
@@ -66,7 +66,7 @@ export class Logger extends LoggerBase<PluginConfig> {
     }
     this.logStream = createWriteStream(logFilePath, { encoding: "utf8" });
     if (await this.writeLogLine(log)) return;
-    this.logTimeout = setTimeout(this.logTimeoutHandler.bind(this), 1000);
+    this.logTimeout = setTimeout(this.logTimeoutHandler.bind(this), 10000);
   }
 
   constructor(
