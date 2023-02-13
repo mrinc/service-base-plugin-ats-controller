@@ -4,13 +4,15 @@ import {
 } from "@bettercorp/service-base/lib/plugins/log-default/plugin";
 import { PluginConfig } from "./sec.config";
 import { IPluginLogger, LogMeta, LoggerBase } from "@bettercorp/service-base";
-import { WriteStream, createWriteStream } from "fs";
+import { WriteStream, createWriteStream, existsSync, renameSync } from "fs";
 import { Tools } from "@bettercorp/tools";
+import { join } from "path";
 
 export class Logger extends LoggerBase<PluginConfig> {
   private baseLogger: BaseLogger;
   private logStream: WriteStream | null = null;
   private logTimeout: NodeJS.Timeout | undefined = undefined;
+  private firstLog: boolean = true;
   private async logTimeoutHandler() {
     if (!Tools.isNullOrUndefined(this.logStream)) {
       this.logStream.close();
@@ -20,17 +22,29 @@ export class Logger extends LoggerBase<PluginConfig> {
   }
   private async writeLog(log: string) {
     if (!Tools.isNullOrUndefined(this.logStream)) {
+      this.logStream.write(new Date().toISOString());
       this.logStream.write(log);
+      this.logStream.write("\n");
       clearTimeout(this.logTimeout);
       this.logTimeout = setTimeout(this.logTimeoutHandler.bind(this), 1000);
       return;
     }
-    this.logStream = createWriteStream(
-      await (
-        await this.getPluginConfig()
-      ).logFile!,
-      { encoding: "utf8" }
-    );
+    const logFile = await (await this.getPluginConfig()).logFile!;
+    const logFilePath = join(this.cwd, logFile);
+
+    if (this.firstLog) {
+      if (existsSync(logFilePath)) {
+        let counter = 0;
+        let tLogfilePath = `${logFilePath}.0`;
+        while (existsSync(tLogfilePath)) {
+          tLogfilePath = `${join(this.cwd, logFile)}.${counter}`;
+          counter++;
+        }
+        renameSync(logFilePath, tLogfilePath);
+      }
+    }
+    this.firstLog = false;
+    this.logStream = createWriteStream(logFilePath, { encoding: "utf8" });
     this.logStream.write(new Date().toISOString());
     this.logStream.write(log);
     this.logStream.write("\n");
