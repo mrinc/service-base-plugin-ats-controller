@@ -37,6 +37,41 @@ export class loadshedding {
     return list.currentStage;
   }
   getTimeUntilNextLoadShedding(): number {
+    return this.getTimeUntilNextLoadSheddingDetailed().timeUntil;
+  }
+  getTimeUntilNextLoadSheddingDetailedIf(): {
+    stage: number;
+    timeUntil: number;
+    startTime: string;
+    endTime: string;
+  } | null {
+    const stages = [1, 2, 3, 4, 5, 6, 7, 8];
+    let maxUntilLoadSheddingTimeUntil = Number.MAX_VALUE;
+    let maxUntilLoadShedding: {
+      stage: number;
+      timeUntil: number;
+      startTime: string;
+      endTime: string;
+    } | null = null;
+    for (let stage of stages) {
+      let thisStageInfo = this.getTimeUntilNextLoadSheddingDetailed(stage);
+      if (thisStageInfo.timeUntil > 0) {
+        if (thisStageInfo.timeUntil < maxUntilLoadSheddingTimeUntil) {
+          maxUntilLoadSheddingTimeUntil = thisStageInfo.timeUntil;
+          maxUntilLoadShedding = {
+            stage,
+            ...thisStageInfo,
+          };
+        }
+      }
+    }
+    return maxUntilLoadShedding;
+  }
+  getTimeUntilNextLoadSheddingDetailed(stage?: number): {
+    timeUntil: number;
+    startTime: string;
+    endTime: string;
+  } {
     const NOW = new Date();
     // will return 0 if in load shedding // will return -1 if no load shedding
     let list = JSON.parse(
@@ -80,7 +115,7 @@ export class loadshedding {
           return {
             dayOfWeek: x.dayOfWeek,
             times: x.times.filter(
-              (x) => x.stages.indexOf(list.currentStage) >= 0
+              (x) => x.stages.indexOf(stage ?? list.currentStage) >= 0
             ),
           } as LSConfig;
         })
@@ -111,7 +146,11 @@ export class loadshedding {
               timeInSDaysAhead,
               timeUntil
             );
-            return timeUntil > 0 ? timeUntil : 0;
+            return {
+              timeUntil: timeUntil > 0 ? timeUntil : 0,
+              startTime: (time as any)._startTime,
+              endTime: (time as any)._endTime,
+            };
           }
 
           const timeUntil = time.startTime - timeNow;
@@ -123,7 +162,11 @@ export class loadshedding {
             timeInSDaysAhead,
             timeUntil
           );
-          return timeUntil > 0 ? timeUntil : 0;
+          return {
+            timeUntil: timeUntil > 0 ? timeUntil : 0,
+            startTime: (time as any)._startTime,
+            endTime: (time as any)._endTime,
+          };
         }
       }
 
@@ -134,6 +177,10 @@ export class loadshedding {
       if (currentDay === NOW.getDay()) break;
     } while (nextSession === null);
 
-    return -1;
+    return {
+      timeUntil: -1,
+      startTime: "00:00",
+      endTime: "00:00",
+    };
   }
 }

@@ -32,8 +32,14 @@ export class Service extends ServicesBase<
     inLoadShedding: false,
     timeHUntilNextLS: 0,
     timeMUntilNextLS: 0,
-    startGeniMinutesBeforeLoadShedding: 0,
-    startGeniMinutesBeforeLoadSheddingCounter: 0,
+    startGeniMinBeforeLS: 0,
+    startGeniMinLSCounter: 0,
+
+    nextLSStartTime: "",
+    nextLSEndTime: "",
+    estLSStage: 0,
+    estLSStartTime: "",
+    estLSEndTime: "",
   };
   public knownStates = {
     systemBusy: false,
@@ -258,7 +264,7 @@ export class Service extends ServicesBase<
     this.loadShedding = new loadshedding(
       (await this.getPluginConfig()).loadsheddingFile
     );
-    this.loadSheddingState.startGeniMinutesBeforeLoadShedding = (
+    this.loadSheddingState.startGeniMinBeforeLS = (
       await this.getPluginConfig()
     ).startGeniMinutesBeforeLoadShedding;
     await this.inputs.init();
@@ -269,18 +275,24 @@ export class Service extends ServicesBase<
     if (this.knownStates.systemBusy) return;
     await self.log.info("Check Load Shedding");
     self.loadSheddingState.currentStage = self.loadShedding.getStage();
-    let timeBeforeLS = self.loadShedding.getTimeUntilNextLoadShedding();
+    let timeBeforeDetail =
+      self.loadShedding.getTimeUntilNextLoadSheddingDetailed();
+    let timeBeforeLS = timeBeforeDetail.timeUntil;
     await self.log.info("Time before LS: {LST}", { LST: timeBeforeLS });
     if (timeBeforeLS <= -1) {
+      self.loadSheddingState.nextLSStartTime = "";
+      self.loadSheddingState.nextLSEndTime = "";
       self.loadSheddingState.inLoadShedding = false;
       self.loadSheddingState.timeHUntilNextLS = 0;
       self.loadSheddingState.timeMUntilNextLS = 0;
-      self.loadSheddingState.startGeniMinutesBeforeLoadSheddingCounter = -3;
+      self.loadSheddingState.startGeniMinLSCounter = -3;
     } else if (timeBeforeLS === 0) {
+      self.loadSheddingState.nextLSStartTime = "";
+      self.loadSheddingState.nextLSEndTime = "";
       self.loadSheddingState.inLoadShedding = true;
       self.loadSheddingState.timeHUntilNextLS = 0;
       self.loadSheddingState.timeMUntilNextLS = 0;
-      self.loadSheddingState.startGeniMinutesBeforeLoadSheddingCounter = -1;
+      self.loadSheddingState.startGeniMinLSCounter = -1;
     } else {
       self.loadSheddingState.inLoadShedding = false;
 
@@ -288,18 +300,18 @@ export class Service extends ServicesBase<
       timeBeforeLS = timeBeforeLS / 60; // m
       let timeBeforeLSH = Math.floor(timeBeforeLS / 60); // h
 
-      self.loadSheddingState.startGeniMinutesBeforeLoadSheddingCounter =
+      self.loadSheddingState.startGeniMinLSCounter =
         timeBeforeLS -
-        self.loadSheddingState.startGeniMinutesBeforeLoadShedding;
-      if (self.loadSheddingState.startGeniMinutesBeforeLoadSheddingCounter < 0)
-        self.loadSheddingState.startGeniMinutesBeforeLoadSheddingCounter = -2;
+        self.loadSheddingState.startGeniMinBeforeLS;
+      if (self.loadSheddingState.startGeniMinLSCounter < 0)
+        self.loadSheddingState.startGeniMinLSCounter = -2;
 
       let relayStates = self.outputs.getState();
       let powerStates = self.inputs.getState();
 
       if (
         timeBeforeLS <=
-          self.loadSheddingState.startGeniMinutesBeforeLoadShedding &&
+          self.loadSheddingState.startGeniMinBeforeLS &&
         relayStates.contactor_generator === false &&
         powerStates.power_secondary === false
       ) {
@@ -330,6 +342,16 @@ export class Service extends ServicesBase<
       self.loadSheddingState.timeMUntilNextLS =
         timeBeforeLS - timeBeforeLSH * 60;
     }
+
+    let timeBeforeEstimated =
+      self.loadShedding.getTimeUntilNextLoadSheddingDetailedIf() ?? {
+        stage: 0,
+        startTime: "",
+        endTime: "",
+      };
+    self.loadSheddingState.estLSStage = timeBeforeEstimated.stage;
+    self.loadSheddingState.estLSStartTime = timeBeforeEstimated.startTime;
+    self.loadSheddingState.estLSEndTime = timeBeforeEstimated.endTime;
 
     // if (
     //   !self.knownStates.systemBusy &&
