@@ -2,6 +2,7 @@ import { Service } from "./plugin";
 import { IPluginLogger } from "@bettercorp/service-base";
 import { serialPort } from "@bettercorp/service-base-plugin-serial";
 import { Tools } from "@bettercorp/tools";
+import { IDictionary } from "@bettercorp/tools/lib/Interfaces";
 import { clearInterval } from "timers";
 import * as tx2 from "tx2";
 
@@ -36,6 +37,8 @@ export interface InputStates {
 
   counter_last_db_power: number;
   counter_last_lastPing: number;
+
+  lastRead: string;
 }
 
 const MAX_PING_COUNT = 60;
@@ -58,10 +61,14 @@ export class Inputs {
 
     counter_last_db_power: Number.MIN_VALUE,
     counter_last_lastPing: MAX_PING_COUNT,
+
+    lastRead: "",
   };
   private metrics: any = {};
   private counterTimer!: NodeJS.Timer;
-  constructor(self: Service) {
+  private handleLog = (value: string) => {};
+  constructor(self: Service, handleLog: { (value: string): void }) {
+    this.handleLog = handleLog;
     this.log = self.log;
     this._serialPort = new serialPort(self);
     const aSelf = this;
@@ -131,10 +138,27 @@ export class Inputs {
           red: rewritten[6],
           blue_house: rewritten[7],
         };
+        let outputKeyed: IDictionary<ParsedStateItem> = {
+          P: rewritten[0],
+          S: rewritten[1],
+          D: rewritten[2],
+          U: rewritten[3],
+          B: rewritten[4],
+          G: rewritten[4],
+          R: rewritten[6],
+          H: rewritten[7],
+        };
         await self.log.debug("{rewritten}", {
           rewritten: JSON.stringify(rewritten),
         });
         await self.log.debug("{output}", { output: JSON.stringify(output) });
+        let reWrittenAsString = Object.keys(outputKeyed)
+          .map((x) => `${x}:${outputKeyed[x].power}`)
+          .join("|");
+        if (self.knownStates.lastRead != reWrittenAsString) {
+          self.knownStates.lastRead = reWrittenAsString;
+          self.handleLog(`Inputs: ${reWrittenAsString}`);
+        }
         await self.handleParsedData(output);
       }
       case "PING":

@@ -111,7 +111,7 @@ export class Outputs {
     }
 
     latestSystemBusyPoint(
-      `Relays: P:${this.statesOfRelays.contactor_primary ? "1" : "0"}|S:${
+      `Outputs: P:${this.statesOfRelays.contactor_primary ? "1" : "0"}|S:${
         this.statesOfRelays.contactor_secondary ? "1" : "0"
       }|G:${this.statesOfRelays.contactor_generator ? "1" : "0"}`
     );

@@ -91,7 +91,9 @@ export class Service extends ServicesBase<
     super(pluginName, cwd, pluginCwd, log);
     const self = this;
     this.outputs = new Outputs(this);
-    this.inputs = new Inputs(this);
+    this.inputs = new Inputs(this, (value: string) => {
+      self.latestSystemBusyPoint = value;
+    });
     this.web = new Web(this);
 
     for (let key of Object.keys(this.knownStates)) {
@@ -540,8 +542,7 @@ export class Service extends ServicesBase<
         }
       } else {
         if (!relayStates.contactor_secondary) {
-          self.latestSystemBusyPoint =
-            "System check : primary off";
+          self.latestSystemBusyPoint = "System check : primary off";
           await self.log.info(" - CHECK SECONDARY");
           await self.sendContactorUpdate(false, null, null);
           if (currentState.power_secondary) {

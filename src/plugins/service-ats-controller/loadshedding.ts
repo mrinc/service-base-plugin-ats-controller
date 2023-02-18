@@ -18,8 +18,14 @@ export interface LSDef {
 // monday - 1
 // saturday - 6
 export class loadshedding {
+  private handleLog = (value: string) => {};
   private readonly loadSheddingFile: string;
-  constructor(lsFile: string) {
+  private states = {
+    lastStage: -1,
+    nextSchedule: "",
+  };
+  constructor(lsFile: string, handleLog: { (value: string): void }) {
+    this.handleLog = handleLog;
     this.loadSheddingFile = lsFile;
   }
   updateStage(newStage: number) {
@@ -34,6 +40,10 @@ export class loadshedding {
     let list = JSON.parse(
       readFileSync(this.loadSheddingFile).toString()
     ) as LSDef;
+    if (this.states.lastStage !== list.currentStage) {
+      this.handleLog("Load Shedding Stage: " + list.currentStage);
+      this.states.lastStage = list.currentStage;
+    }
     return list.currentStage;
   }
   getTimeUntilNextLoadShedding(): number {
@@ -66,6 +76,17 @@ export class loadshedding {
       }
     }
     return maxUntilLoadShedding;
+  }
+  private scheduleUpdate(schedule: LSConfigTimes, currentDay: number) {
+    let dayName = "Today";
+    if (currentDay > 2) dayName = "Three days";
+    else if (currentDay > 1) dayName = "Two days";
+    else if (currentDay > 0) dayName = "Tomorrow";
+    let schedTime = `${dayName} at ${(schedule as any)._startTime}`;
+    if (this.states.nextSchedule !== schedTime) {
+      this.handleLog(`Next load shedding: ${schedTime}`);
+      this.states.nextSchedule = schedTime;
+    }
   }
   getTimeUntilNextLoadSheddingDetailed(stage?: number): {
     timeUntil: number;
@@ -146,6 +167,7 @@ export class loadshedding {
               timeInSDaysAhead,
               timeUntil
             );
+            this.scheduleUpdate(time, currentDay);
             return {
               timeUntil: timeUntil > 0 ? timeUntil : 0,
               startTime: (time as any)._startTime,
@@ -162,6 +184,7 @@ export class loadshedding {
             timeInSDaysAhead,
             timeUntil
           );
+          this.scheduleUpdate(time, currentDay);
           return {
             timeUntil: timeUntil > 0 ? timeUntil : 0,
             startTime: (time as any)._startTime,
@@ -177,6 +200,7 @@ export class loadshedding {
       if (currentDay === NOW.getDay()) break;
     } while (nextSession === null);
 
+    this.states.nextSchedule = "";
     return {
       timeUntil: -1,
       startTime: "00:00",
