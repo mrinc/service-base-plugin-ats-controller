@@ -39,6 +39,7 @@ export interface InputStates {
   counter_last_lastPing: number;
 
   lastRead: string;
+  lastRead2: string;
 }
 
 const MAX_PING_COUNT = 60;
@@ -63,6 +64,7 @@ export class Inputs {
     counter_last_lastPing: MAX_PING_COUNT,
 
     lastRead: "",
+    lastRead2: "",
   };
   private metrics: any = {};
   private counterTimer!: NodeJS.Timer;
@@ -138,26 +140,44 @@ export class Inputs {
           red: rewritten[6],
           blue_house: rewritten[7],
         };
-        let outputKeyed: IDictionary<ParsedStateItem> = {
-          P: rewritten[0],
-          S: rewritten[1],
-          D: rewritten[2],
-          U: rewritten[3],
-          B: rewritten[4],
-          G: rewritten[4],
-          R: rewritten[6],
-          H: rewritten[7],
-        };
         await self.log.debug("{rewritten}", {
           rewritten: JSON.stringify(rewritten),
         });
         await self.log.debug("{output}", { output: JSON.stringify(output) });
+
+        let outputKeyed: IDictionary<ParsedStateItem> = {
+          P: rewritten[0],
+          S: rewritten[1],
+          D: rewritten[2],
+          //U: rewritten[3],
+          //B: rewritten[4],
+          //G: rewritten[4],
+          //R: rewritten[6],
+          //H: rewritten[7],
+        };
         let reWrittenAsString = Object.keys(outputKeyed)
           .map((x) => `${x}:${outputKeyed[x].power ? "1" : "0"}`)
           .join("|");
         if (self.knownStates.lastRead != reWrittenAsString) {
           self.knownStates.lastRead = reWrittenAsString;
           self.handleLog(`Inputs: ${reWrittenAsString}`);
+        }
+        let outputKeyed2: IDictionary<ParsedStateItem> = {
+          //P: rewritten[0],
+          //S: rewritten[1],
+          //D: rewritten[2],
+          U: rewritten[3],
+          B: rewritten[4],
+          G: rewritten[4],
+          R: rewritten[6],
+          H: rewritten[7],
+        };
+        let reWrittenAsString2 = Object.keys(outputKeyed2)
+          .map((x) => `${x}:${outputKeyed2[x].power ? "1" : "0"}`)
+          .join("|");
+        if (self.knownStates.lastRead2 != reWrittenAsString2) {
+          self.knownStates.lastRead2 = reWrittenAsString2;
+          self.handleLog(`Inputs: ${reWrittenAsString2}`);
         }
         await self.handleParsedData(output);
       }
