@@ -153,7 +153,7 @@ export class Inputs {
         });
         await self.log.debug("{output}", { output: JSON.stringify(output) });
         let reWrittenAsString = Object.keys(outputKeyed)
-          .map((x) => `${x}:${outputKeyed[x].power}`)
+          .map((x) => `${x}:${outputKeyed[x].power ? "1" : "0"}`)
           .join("|");
         if (self.knownStates.lastRead != reWrittenAsString) {
           self.knownStates.lastRead = reWrittenAsString;
