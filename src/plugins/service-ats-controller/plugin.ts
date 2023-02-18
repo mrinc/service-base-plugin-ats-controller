@@ -269,9 +269,12 @@ export class Service extends ServicesBase<
 
   public override async init(): Promise<void> {
     this.outputs.sendSms = await (await this.getPluginConfig()).sendGeniSMS;
-    //const self = this;
+    const self = this;
     this.loadShedding = new loadshedding(
-      (await this.getPluginConfig()).loadsheddingFile
+      (await this.getPluginConfig()).loadsheddingFile,
+      (value: string) => {
+        self.latestSystemBusyPoint = value;
+      }
     );
     this.loadSheddingState.startGeniMinBeforeLS = (
       await this.getPluginConfig()
