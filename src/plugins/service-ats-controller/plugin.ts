@@ -250,12 +250,19 @@ export class Service extends ServicesBase<
     } G:${
       contactor_generator !== null ? (contactor_generator ? "1" : "0") : "_"
     }`;
-    await this.outputs.setState({
-      contactor_primary: contactor_primary !== null ? !contactor_primary : null,
-      contactor_secondary:
-        contactor_secondary !== null ? !contactor_secondary : null,
-      contactor_generator: contactor_generator,
-    });
+    const self = this;
+    await this.outputs.setState(
+      {
+        contactor_primary:
+          contactor_primary !== null ? !contactor_primary : null,
+        contactor_secondary:
+          contactor_secondary !== null ? !contactor_secondary : null,
+        contactor_generator: contactor_generator,
+      },
+      (value: string) => {
+        self.latestSystemBusyPoint = value;
+      }
+    );
   }
 
   public override async init(): Promise<void> {
@@ -534,7 +541,7 @@ export class Service extends ServicesBase<
       } else {
         if (!relayStates.contactor_secondary) {
           self.latestSystemBusyPoint =
-            "System check : quick secondary : restore, primary off";
+            "System check : primary off";
           await self.log.info(" - CHECK SECONDARY");
           await self.sendContactorUpdate(false, null, null);
           if (currentState.power_secondary) {
@@ -545,33 +552,33 @@ export class Service extends ServicesBase<
             await Tools.delay(5000);
             self.latestSystemBusyPoint =
               "System check : quick secondary : complete:";
-            await self.sendContactorUpdate(false, true, true);
+            await self.sendContactorUpdate(false, true, null);
             self.systemState = SysState.Secondary;
             self.knownStates.systemPreppedForLoadShedding = false;
           } else {
             self.latestSystemBusyPoint =
-              "System check : restore secondary : start generator";
+              "System check : activate secondary : start generator";
             await self.log.info(" - ACTIVATE GENERATOR");
             await self.sendContactorUpdate(false, false, true);
             await Tools.delay(15000);
             self.latestSystemBusyPoint =
-              "System check : restore secondary : check generator";
+              "System check : activate secondary : check generator";
             currentState = self.inputs.getState();
             if (!currentState.power_secondary) {
               await self.sendContactorUpdate(true, true, false);
               self.latestSystemBusyPoint =
-                "System check : restore secondary : generator failed";
+                "System check : activate secondary : generator failed";
               await self.log.error(
                 "FAILED TO START GENERATOR: RESTART BSB TO RE-AQUIRE"
               );
               self.knownStates.systemError = true;
             } else {
               self.latestSystemBusyPoint =
-                "System check : restore secondary : warming generator";
+                "System check : activate secondary : warming generator";
               await self.log.info(" - ACTIVATE SECONDARY");
               await Tools.delay(45000);
               self.latestSystemBusyPoint =
-                "System check : restore secondary : complete";
+                "System check : activate secondary : complete";
               await self.sendContactorUpdate(false, true, true);
               self.systemState = SysState.Secondary;
               self.knownStates.systemPreppedForLoadShedding = false;

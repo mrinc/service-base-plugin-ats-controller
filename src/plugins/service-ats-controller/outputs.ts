@@ -57,21 +57,11 @@ export class Outputs {
       contactor_secondary: !this.statesOfRelays.contactor_secondary,
     };
   }
-  public async setState(states: IDictionary<boolean | null>) {
+  public async setState(
+    states: IDictionary<boolean | null>,
+    latestSystemBusyPoint: { (value: string): void }
+  ) {
     let hasChanges = false;
-    for (let state of Object.keys(states)) {
-      const thisState = states[state];
-      if (!Tools.isBoolean(thisState)) continue;
-      if (
-        (this.statesOfRelays as unknown as IDictionary<boolean>)[state] !==
-        thisState
-      ) {
-        hasChanges = true;
-        (this.statesOfRelays as unknown as IDictionary<boolean>)[state] =
-          thisState;
-      }
-    }
-    if (!hasChanges) return;
     if (Tools.isString(this.sendSms)) {
       if (
         this.statesOfRelays.contactor_generator !== states.contactor_generator
@@ -88,6 +78,19 @@ export class Outputs {
         );
       }
     }
+    for (let state of Object.keys(states)) {
+      const thisState = states[state];
+      if (!Tools.isBoolean(thisState)) continue;
+      if (
+        (this.statesOfRelays as unknown as IDictionary<boolean>)[state] !==
+        thisState
+      ) {
+        hasChanges = true;
+        (this.statesOfRelays as unknown as IDictionary<boolean>)[state] =
+          thisState;
+      }
+    }
+    if (!hasChanges) return;
     let pins: {
       pin: number;
       state: boolean;
@@ -107,6 +110,11 @@ export class Outputs {
       });
     }
 
+    latestSystemBusyPoint(
+      `Relays: P:${this.statesOfRelays.contactor_primary ? "1" : "0"}|S:${
+        this.statesOfRelays.contactor_secondary ? "1" : "0"
+      }|G:${this.statesOfRelays.contactor_generator ? "1" : "0"}`
+    );
     await this._gpio.setPinsState(pins);
   }
 }
