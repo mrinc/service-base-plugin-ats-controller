@@ -46,9 +46,9 @@ export class loadshedding {
     }
     return list.currentStage;
   }
-  getTimeUntilNextLoadShedding(): number {
+  /*getTimeUntilNextLoadShedding(): number {
     return this.getTimeUntilNextLoadSheddingDetailed().timeUntil;
-  }
+  }*/
   getTimeUntilNextLoadSheddingDetailedIf(): {
     stage: number;
     timeUntil: number;
@@ -79,11 +79,19 @@ export class loadshedding {
   }
   private scheduleUpdate(schedule: LSConfigTimes, currentDay: number) {
     let dayName = "Today";
-    if (currentDay > 2) dayName = "Three days";
-    else if (currentDay > 1) dayName = "Two days";
-    else if (currentDay > 0) dayName = "Tomorrow";
-    let schedTime = `${dayName} at ${(schedule as any)._startTime}`;
-    if (this.states.nextSchedule !== schedTime) {
+    if (new Date().getDay() != currentDay) {
+      dayName = [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+      ][currentDay];
+    }
+    let schedTime = `${dayName} at ${(schedule as any)._startTime}`.trim();
+    if (this.states.nextSchedule != schedTime) {
       this.handleLog(`Next load shedding: ${schedTime}`);
       this.states.nextSchedule = schedTime;
     }
@@ -167,7 +175,9 @@ export class loadshedding {
               timeInSDaysAhead,
               timeUntil
             );
-            this.scheduleUpdate(time, currentDay);
+            if (stage === undefined) {
+              this.scheduleUpdate(time, currentDay);
+            }
             return {
               timeUntil: timeUntil > 0 ? timeUntil : 0,
               startTime: (time as any)._startTime,
@@ -184,7 +194,9 @@ export class loadshedding {
             timeInSDaysAhead,
             timeUntil
           );
-          this.scheduleUpdate(time, currentDay);
+          if (stage === undefined) {
+            this.scheduleUpdate(time, currentDay);
+          }
           return {
             timeUntil: timeUntil > 0 ? timeUntil : 0,
             startTime: (time as any)._startTime,
@@ -200,7 +212,9 @@ export class loadshedding {
       if (currentDay === NOW.getDay()) break;
     } while (nextSession === null);
 
-    this.states.nextSchedule = "";
+    if (stage === undefined) {
+      this.states.nextSchedule = "";
+    }
     return {
       timeUntil: -1,
       startTime: "00:00",
