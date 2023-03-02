@@ -4,11 +4,12 @@ import { existsSync, writeFileSync } from "fs";
 export interface MyPluginConfig {
   loadsheddingFile: string;
   startGeniMinutesBeforeLoadShedding: number;
-  sendGeniSMS: {
+  /*sendGeniSMS: {
     to: string;
     apiKey: string;
     secret: string;
-  } | null;
+  } | null;*/
+  logApiEndpoint?: string;
 }
 
 export class Config extends SecConfig<MyPluginConfig> {
@@ -17,14 +18,18 @@ export class Config extends SecConfig<MyPluginConfig> {
     existingConfig: MyPluginConfig
   ): MyPluginConfig {
     const config = {
+      logApiEndpoint:
+        existingConfig.logApiEndpoint !== undefined
+          ? existingConfig.logApiEndpoint
+          : undefined,
       loadsheddingFile:
         existingConfig.loadsheddingFile !== undefined
           ? existingConfig.loadsheddingFile
           : "./loadshedding.json",
-      sendGeniSMS:
+      /*sendGeniSMS:
         existingConfig.sendGeniSMS !== undefined
           ? existingConfig.sendGeniSMS
-          : null,
+          : null,*/
       startGeniMinutesBeforeLoadShedding:
         existingConfig.startGeniMinutesBeforeLoadShedding !== undefined
           ? existingConfig.startGeniMinutesBeforeLoadShedding

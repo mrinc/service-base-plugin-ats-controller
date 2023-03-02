@@ -35,6 +35,7 @@
     "@bettercorp/service-base-plugin-web-server": "^6.5.0",
     "@bettercorp/tools": "^2.1.28",
     "@types/node": "^18.11.18",
+    "axios": "^1.3.4",
     "tx2": "^1.0.5"
   }
 }

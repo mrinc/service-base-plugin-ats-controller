@@ -4,7 +4,7 @@ import { Service } from "./plugin";
 import { IPluginLogger } from "@bettercorp/service-base";
 import * as tx2 from "tx2";
 import { Tools } from "@bettercorp/tools";
-import { smsPortalClient } from "@bettercorp/service-base-plugin-sms";
+//import { smsPortalClient } from "@bettercorp/service-base-plugin-sms";
 
 export const PinOutputs: IDictionary<number> = {
   contactor_primary: 4,
@@ -27,14 +27,14 @@ export class Outputs {
   private _gpio: raspPIGPIO;
   private log: IPluginLogger;
   private metrics: any = {};
-  private smsportal: smsPortalClient;
+  //private smsportal: smsPortalClient;
   public sendSms: {
     to: string;
     apiKey: string;
     secret: string;
   } | null = null;
   constructor(self: Service) {
-    this.smsportal = new smsPortalClient(self);
+    //this.smsportal = new smsPortalClient(self);
     this.log = self.log;
     this._gpio = new raspPIGPIO(self);
     const aSelf = this;
@@ -62,7 +62,7 @@ export class Outputs {
     latestSystemBusyPoint: { (value: string): void }
   ) {
     let hasChanges = false;
-    if (Tools.isString(this.sendSms)) {
+    /*if (Tools.isString(this.sendSms)) {
       if (
         this.statesOfRelays.contactor_generator !== states.contactor_generator
       ) {
@@ -77,7 +77,7 @@ export class Outputs {
           this.sendSms.secret
         );
       }
-    }
+    }*/
     for (let state of Object.keys(states)) {
       const thisState = states[state];
       if (!Tools.isBoolean(thisState)) continue;

@@ -10,6 +10,7 @@ import { loadshedding } from "./loadshedding";
 import { Outputs } from "./outputs";
 import { Inputs } from "./inputs";
 import { Web } from "./web";
+import axios from "axios";
 
 export enum SysState {
   Unknown = -1,
@@ -58,6 +59,8 @@ export class Service extends ServicesBase<
     if (this._latestSystemBusyPoint.length > 50) {
       this._latestSystemBusyPoint = this._latestSystemBusyPoint.splice(0, 50);
     }
+
+    this.fireAPIEvent(value);
   }
   public get systemState(): SysState {
     return this.knownStates.systemCurrentState;
@@ -72,6 +75,20 @@ export class Service extends ServicesBase<
         ? "Secondary"
         : "Unknown");
   }
+  private fireAPIEvent = async (event: string) => {
+    const logApiEndpoint = (await this.getPluginConfig()).logApiEndpoint
+    if (logApiEndpoint === undefined) return;
+    const self = this;
+    setTimeout(async () => {
+      try {
+        await axios.post(logApiEndpoint, {
+          event,
+        });
+      } catch (e: any) {
+        await self.log.error(e);
+      }
+    }, 1);
+  };
 
   private loadSheddingTimer: NodeJS.Timer | null = null;
   private counterTimer: NodeJS.Timer | null = null;
@@ -268,7 +285,7 @@ export class Service extends ServicesBase<
   }
 
   public override async init(): Promise<void> {
-    this.outputs.sendSms = await (await this.getPluginConfig()).sendGeniSMS;
+    //this.outputs.sendSms = await (await this.getPluginConfig()).sendGeniSMS;
     const self = this;
     this.loadShedding = new loadshedding(
       (await this.getPluginConfig()).loadsheddingFile,
