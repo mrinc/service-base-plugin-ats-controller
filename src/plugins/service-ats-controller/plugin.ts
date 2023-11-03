@@ -302,10 +302,13 @@ export class Service extends ServicesBase<
     ).startGeniMinutesBeforeLoadShedding;
     await this.inputs.init();
     await this.web.init();
+    this.loadShedding.emitter.on("updated", () => {
+      this.runLoadSheddingUpdater(true);
+    });
   }
-  public async runLoadSheddingUpdater() {
+  public async runLoadSheddingUpdater(forceStep1: boolean = false) {
     const self = this;
-    if (this.knownStates.systemBusy) return;
+    if (this.knownStates.systemBusy && forceStep1 === false) return;
     await self.log.info("Check Load Shedding");
     self.loadSheddingState.currentStage = self.loadShedding.getStage();
     let timeBeforeDetail =
@@ -335,10 +338,13 @@ export class Service extends ServicesBase<
       timeBeforeLS = timeBeforeLS / 60; // m
       let timeBeforeLSH = Math.floor(timeBeforeLS / 60); // h
 
-      self.loadSheddingState.startGeniMinLSCounter =
-        Math.round(timeBeforeLS - self.loadSheddingState.startGeniMinBeforeLS);
+      self.loadSheddingState.startGeniMinLSCounter = Math.round(
+        timeBeforeLS - self.loadSheddingState.startGeniMinBeforeLS
+      );
       if (self.loadSheddingState.startGeniMinLSCounter < 0)
         self.loadSheddingState.startGeniMinLSCounter = -2;
+
+      if (this.knownStates.systemBusy) return;
 
       let relayStates = self.outputs.getState();
       let powerStates = self.inputs.getState();

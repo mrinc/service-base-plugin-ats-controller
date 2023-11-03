@@ -2,6 +2,7 @@
 import { IPluginLogger } from "@bettercorp/service-base";
 import axios from "axios";
 import * as moment from "moment";
+import { EventEmitter } from 'stream';
 
 export interface LSConfigTimes {
   // times are MS from 00:00
@@ -74,6 +75,7 @@ export class loadshedding {
   public ESPLSAreaStatus: ESPAreaStatus | null = null;
   public ESPLSStatus: ESPStatus | null = null;
   private handleLog = (value: string) => {};
+  emitter: EventEmitter = new EventEmitter();
   /*private readonly loadSheddingFile: string;
   private states = {
     lastStage: -1,
@@ -126,6 +128,7 @@ export class loadshedding {
         this.handleLog(
           "Synced ESP known stage: " + this.ESPLSStatus.status.eskom.stage
         );
+        self.emitter.emit('updated');
       })
       .catch((error) => {
         self.log.error("Error getting load shedding status: ", error);
