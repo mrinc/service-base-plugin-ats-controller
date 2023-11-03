@@ -87,6 +87,7 @@ export class loadshedding {
   private triggerESPUpdate() {
     this.log.info("SYNCING ESP DETAILS");
     const self = this;
+    this.handleLog("Sync ESP LS Details");
     axios
       .get(
         "https://developer.sepush.co.za/business/2.0/area?id=" +
@@ -122,6 +123,10 @@ export class loadshedding {
         this.ESPLSAreaStatus = result as ESPAreaStatus;
         this.ESPLSStatus = statusreq.data as ESPStatus;
         self.log.warn("SYNCING ESP DETAILS : OK");
+        this.handleLog(
+          "Synced ESP LS Details - known stage: " +
+            this.ESPLSStatus.status.eskom.stage
+        );
       })
       .catch((error) => {
         self.log.error("Error getting load shedding status: ", error);
@@ -171,6 +176,7 @@ export class loadshedding {
     list.currentStage = newStage;
     writeFileSync(this.loadSheddingFile, JSON.stringify(list));*/
   }
+  private knownStage: number = 0;
   getStage() {
     if (this.ESPLSAreaStatus === null) return -3;
     if (this.ESPLSStatus === null) return -4;
@@ -181,7 +187,10 @@ export class loadshedding {
       }
     }
     if (stage === 0) {
-      return Number.parseInt(this.ESPLSStatus.status.eskom.stage);
+      stage = Number.parseInt(this.ESPLSStatus.status.eskom.stage);
+    }
+    if (this.knownStage !== stage) {
+      this.handleLog("Load Shedding Stage: " + stage);
     }
     return stage;
     /*let list = JSON.parse(
