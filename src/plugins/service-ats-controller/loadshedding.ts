@@ -148,6 +148,7 @@ export class loadshedding {
     startTime: string;
     endTime: string;
   } | null {
+    if (this.ESPLSStatus === null) return null;
     const stages = [1, 2, 3, 4, 5, 6, 7, 8];
     let maxUntilLoadSheddingTimeUntil = Number.MAX_VALUE;
     let maxUntilLoadShedding: {
