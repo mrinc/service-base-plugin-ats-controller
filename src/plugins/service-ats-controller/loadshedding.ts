@@ -21,9 +21,9 @@ export interface ESPAreaStatus {
 }
 
 export interface ESPAreaStatusEvent {
-  end: Date;//string;
+  end: Date; //string;
   note: string;
-  start: Date;//string;
+  start: Date; //string;
 }
 
 export interface ESPAreaStatusInfo {
@@ -75,7 +75,7 @@ export class loadshedding {
     )
       .then((response) => response.json())
       .then((result) => {
-        for (let index = 0 ; index < result.events.length; index++) {
+        for (let index = 0; index < result.events.length; index++) {
           result.events[index].start = new Date(result.events[index].start);
           result.events[index].end = new Date(result.events[index].end);
         }
@@ -87,7 +87,12 @@ export class loadshedding {
       });
   }
   private scheduleUpdateInterval: NodeJS.Timeout | null = null;
-  constructor(/*lsFile: string, */handleLog: { (value: string): void }, ESPAPIKey: string, LoadSheddingESPID: string, ESPRequestsPerDay: number) {
+  constructor(
+    /*lsFile: string, */ handleLog: { (value: string): void },
+    ESPAPIKey: string,
+    LoadSheddingESPID: string,
+    ESPRequestsPerDay: number
+  ) {
     this.ESPAPIKey = ESPAPIKey;
     this.LoadSheddingESPID = LoadSheddingESPID;
     this.ESPRequestsPerDay = ESPRequestsPerDay;
@@ -97,10 +102,11 @@ export class loadshedding {
     const totalMillisecondsInADay = 24 * 60 * 60 * 1000;
     // Calculate the interval between each request
     const intervalBetweenEachRequest =
-      totalMillisecondsInADay / (this.ESPRequestsPerDay-2);
+      totalMillisecondsInADay / (this.ESPRequestsPerDay - 4);
     this.scheduleUpdateInterval = setInterval(() => {
       this.triggerESPUpdate();
     }, Math.round(intervalBetweenEachRequest));
+    this.triggerESPUpdate();
   }
   dispose() {
     if (this.scheduleUpdateInterval) {
@@ -188,12 +194,15 @@ export class loadshedding {
     startTime: string;
     endTime: string;
   } {
-    if (this.ESPLSStatus === null) return { timeUntil: -1, startTime: "00:00", endTime: "00:00" };
+    if (this.ESPLSStatus === null)
+      return { timeUntil: -1, startTime: "00:00", endTime: "00:00" };
     let activeStage = stage ?? this.getStage();
-    if (activeStage === 0) return { timeUntil: -1, startTime: "00:00", endTime: "00:00" };
-    
-    let scheds = this.ESPLSStatus.schedule.days[0].stages[activeStage-1];
-    if (scheds.length === 0) return { timeUntil: -1, startTime: "00:00", endTime: "00:00" };
+    if (activeStage === 0)
+      return { timeUntil: -1, startTime: "00:00", endTime: "00:00" };
+
+    let scheds = this.ESPLSStatus.schedule.days[0].stages[activeStage - 1];
+    if (scheds.length === 0)
+      return { timeUntil: -1, startTime: "00:00", endTime: "00:00" };
     for (let sched of scheds) {
       let startTime = sched.split("-")[0];
       let endTime = sched.split("-")[1];
