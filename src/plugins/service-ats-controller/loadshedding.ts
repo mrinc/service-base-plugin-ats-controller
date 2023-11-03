@@ -160,6 +160,7 @@ export class loadshedding {
     } | null = null;
     for (let stage of stages) {
       let thisStageInfo = this.getTimeUntilNextLoadSheddingDetailed(stage);
+      console.log('stage: ' + stage, thisStageInfo);
       if (thisStageInfo.timeUntil > 0) {
         if (thisStageInfo.timeUntil < maxUntilLoadSheddingTimeUntil) {
           maxUntilLoadSheddingTimeUntil = thisStageInfo.timeUntil;
@@ -200,45 +201,34 @@ export class loadshedding {
       return { timeUntil: -1, startTime: "00:00", endTime: "00:00" };
     let activeStage = stage ?? this.getStage();
     if (activeStage === 0)
-      return { timeUntil: -1, startTime: "00:00", endTime: "00:00" };
+      return { timeUntil: -2, startTime: "00:00", endTime: "00:00" };
 
     let scheds = this.ESPLSStatus.schedule.days[0].stages[activeStage - 1];
     if (scheds.length === 0)
-      return { timeUntil: -1, startTime: "00:00", endTime: "00:00" };
+      return { timeUntil: -3, startTime: "00:00", endTime: "00:00" };
     for (let sched of scheds) {
       let startTime = sched.split("-")[0];
       let endTime = sched.split("-")[1];
-      let startTimeH = Number.parseInt(startTime.split(":")[0]);
-      let startTimeM = Number.parseInt(startTime.split(":")[1]);
-      let endTimeH = Number.parseInt(endTime.split(":")[0]);
-      let endTimeM = Number.parseInt(endTime.split(":")[1]);
-      let timeNow = new Date();
-      let startTimeDate = new Date();
-      startTimeDate.setHours(startTimeH);
-      startTimeDate.setMinutes(startTimeM);
-      startTimeDate.setSeconds(0);
-      startTimeDate.setMilliseconds(0);
-      let endTimeDate = new Date();
-      endTimeDate.setHours(endTimeH);
-      endTimeDate.setMinutes(endTimeM);
-      endTimeDate.setSeconds(0);
-      endTimeDate.setMilliseconds(0);
+      let dateNow = new Date(/*'2023-11-03T07:00:00'*/);
+      let timeNow = dateNow.getTime();
+      let startTimeDate = new Date(`${dateNow.getFullYear()}-${dateNow.getMonth()<9?'0':''}${dateNow.getMonth()+1}-${dateNow.getDate()<10?'0':''}${dateNow.getDate()}T${startTime}:00`).getTime();
+      let endTimeDate = new Date(`${dateNow.getFullYear()}-${dateNow.getMonth()<9?'0':''}${dateNow.getMonth()+1}-${dateNow.getDate()<10?'0':''}${dateNow.getDate()}T${endTime}:00`).getTime();
       if (timeNow >= startTimeDate && timeNow <= endTimeDate) {
         return {
-          timeUntil: -1,
+          timeUntil: -4,
           startTime,
           endTime,
         };
       }
       if (timeNow < startTimeDate) {
         return {
-          timeUntil: startTimeDate.getTime() - timeNow.getTime(),
+          timeUntil: startTimeDate - timeNow,
           startTime,
           endTime,
         };
       }
     }
-    return { timeUntil: -1, startTime: "00:00", endTime: "00:00" };
+    return { timeUntil: -5, startTime: "00:00", endTime: "00:00" };
 
     /*const NOW = new Date();
     // will return 0 if in load shedding // will return -1 if no load shedding
