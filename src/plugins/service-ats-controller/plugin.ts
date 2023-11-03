@@ -76,7 +76,7 @@ export class Service extends ServicesBase<
         : "Unknown");
   }
   private fireAPIEvent = async (event: string) => {
-    const logApiEndpoint = (await this.getPluginConfig()).logApiEndpoint
+    const logApiEndpoint = (await this.getPluginConfig()).logApiEndpoint;
     if (logApiEndpoint === undefined) return;
     const self = this;
     setTimeout(async () => {
@@ -288,10 +288,13 @@ export class Service extends ServicesBase<
     //this.outputs.sendSms = await (await this.getPluginConfig()).sendGeniSMS;
     const self = this;
     this.loadShedding = new loadshedding(
-      (await this.getPluginConfig()).loadsheddingFile,
+      /*(await this.getPluginConfig()).loadsheddingFile,*/
       (value: string) => {
         self.latestSystemBusyPoint = value;
-      }
+      },
+      (await this.getPluginConfig()).espAPIKey,
+      (await this.getPluginConfig()).espAPILocation,
+      (await this.getPluginConfig()).espAPILimitPerDay
     );
     this.loadSheddingState.startGeniMinBeforeLS = (
       await this.getPluginConfig()

@@ -14,37 +14,124 @@ export interface LSDef {
   schedule: Array<LSConfig>;
   currentStage: number;
 }
+export interface ESPAreaStatus {
+  events: ESPAreaStatusEvent[];
+  info: ESPAreaStatusInfo;
+  schedule: ESPAreaStatusSchedule;
+}
+
+export interface ESPAreaStatusEvent {
+  end: Date;//string;
+  note: string;
+  start: Date;//string;
+}
+
+export interface ESPAreaStatusInfo {
+  name: string;
+  region: string;
+}
+
+export interface ESPAreaStatusSchedule {
+  days: ESPAreaStatusDay[];
+  source: string;
+}
+
+export interface ESPAreaStatusDay {
+  date: string;
+  name: string;
+  stages: Array<string[]>;
+}
+
 // sunday - 0
 // monday - 1
 // saturday - 6
 export class loadshedding {
+  private ESPLSStatus: ESPAreaStatus | null = null;
   private handleLog = (value: string) => {};
-  private readonly loadSheddingFile: string;
+  /*private readonly loadSheddingFile: string;
   private states = {
     lastStage: -1,
     nextSchedule: "",
-  };
-  constructor(lsFile: string, handleLog: { (value: string): void }) {
+  };*/
+
+  private ESPAPIKey: string;
+  private LoadSheddingESPID: string;
+  private ESPRequestsPerDay = 50;
+
+  private triggerESPUpdate() {
+    let myHeaders = new Headers();
+    myHeaders.append("token", this.ESPAPIKey);
+
+    let requestOptions = {
+      method: "GET",
+      headers: myHeaders,
+      redirect: "follow",
+    };
+
+    fetch(
+      "https://developer.sepush.co.za/business/2.0/area?id=" +
+        this.LoadSheddingESPID,
+      requestOptions as any
+    )
+      .then((response) => response.json())
+      .then((result) => {
+        for (let index = 0 ; index < result.events.length; index++) {
+          result.events[index].start = new Date(result.events[index].start);
+          result.events[index].end = new Date(result.events[index].end);
+        }
+        this.ESPLSStatus = result as ESPAreaStatus;
+      })
+      .catch((error) => {
+        this.handleLog("Error getting load shedding status: " + error);
+        this.ESPLSStatus = null;
+      });
+  }
+  private scheduleUpdateInterval: NodeJS.Timeout | null = null;
+  constructor(/*lsFile: string, */handleLog: { (value: string): void }, ESPAPIKey: string, LoadSheddingESPID: string, ESPRequestsPerDay: number) {
+    this.ESPAPIKey = ESPAPIKey;
+    this.LoadSheddingESPID = LoadSheddingESPID;
+    this.ESPRequestsPerDay = ESPRequestsPerDay;
     this.handleLog = handleLog;
-    this.loadSheddingFile = lsFile;
+    //this.loadSheddingFile = lsFile;
+    // Calculate the total milliseconds in a day
+    const totalMillisecondsInADay = 24 * 60 * 60 * 1000;
+    // Calculate the interval between each request
+    const intervalBetweenEachRequest =
+      totalMillisecondsInADay / (this.ESPRequestsPerDay-2);
+    this.scheduleUpdateInterval = setInterval(() => {
+      this.triggerESPUpdate();
+    }, Math.round(intervalBetweenEachRequest));
+  }
+  dispose() {
+    if (this.scheduleUpdateInterval) {
+      clearInterval(this.scheduleUpdateInterval);
+    }
   }
   updateStage(newStage: number) {
-    if (newStage < 0 || newStage > 8) return;
+    /*if (newStage < 0 || newStage > 8) return;
     let list = JSON.parse(
       readFileSync(this.loadSheddingFile).toString()
     ) as LSDef;
     list.currentStage = newStage;
-    writeFileSync(this.loadSheddingFile, JSON.stringify(list));
+    writeFileSync(this.loadSheddingFile, JSON.stringify(list));*/
   }
   getStage() {
-    let list = JSON.parse(
+    if (this.ESPLSStatus === null) return 0;
+    let stage = 0;
+    for (let lsevent of this.ESPLSStatus.events) {
+      if (new Date() >= lsevent.start && new Date() <= lsevent.end) {
+        stage = Number.parseInt(lsevent.note.split(" ")[1]);
+      }
+    }
+    return stage;
+    /*let list = JSON.parse(
       readFileSync(this.loadSheddingFile).toString()
     ) as LSDef;
     if (this.states.lastStage !== list.currentStage) {
       this.handleLog("Load Shedding Stage: " + list.currentStage);
       this.states.lastStage = list.currentStage;
     }
-    return list.currentStage;
+    return list.currentStage;*/
   }
   /*getTimeUntilNextLoadShedding(): number {
     return this.getTimeUntilNextLoadSheddingDetailed().timeUntil;
@@ -77,7 +164,7 @@ export class loadshedding {
     }
     return maxUntilLoadShedding;
   }
-  private scheduleUpdate(schedule: LSConfigTimes, currentDay: number) {
+  /*private scheduleUpdate(schedule: LSConfigTimes, currentDay: number) {
     let dayName = "Today";
     if (new Date().getDay() != currentDay) {
       dayName = [
@@ -95,13 +182,54 @@ export class loadshedding {
       this.handleLog(`Next load shedding: ${schedTime}`);
       this.states.nextSchedule = schedTime;
     }
-  }
+  }*/
   getTimeUntilNextLoadSheddingDetailed(stage?: number): {
     timeUntil: number;
     startTime: string;
     endTime: string;
   } {
-    const NOW = new Date();
+    if (this.ESPLSStatus === null) return { timeUntil: -1, startTime: "00:00", endTime: "00:00" };
+    let activeStage = stage ?? this.getStage();
+    if (activeStage === 0) return { timeUntil: -1, startTime: "00:00", endTime: "00:00" };
+    
+    let scheds = this.ESPLSStatus.schedule.days[0].stages[activeStage-1];
+    if (scheds.length === 0) return { timeUntil: -1, startTime: "00:00", endTime: "00:00" };
+    for (let sched of scheds) {
+      let startTime = sched.split("-")[0];
+      let endTime = sched.split("-")[1];
+      let startTimeH = Number.parseInt(startTime.split(":")[0]);
+      let startTimeM = Number.parseInt(startTime.split(":")[1]);
+      let endTimeH = Number.parseInt(endTime.split(":")[0]);
+      let endTimeM = Number.parseInt(endTime.split(":")[1]);
+      let timeNow = new Date();
+      let startTimeDate = new Date();
+      startTimeDate.setHours(startTimeH);
+      startTimeDate.setMinutes(startTimeM);
+      startTimeDate.setSeconds(0);
+      startTimeDate.setMilliseconds(0);
+      let endTimeDate = new Date();
+      endTimeDate.setHours(endTimeH);
+      endTimeDate.setMinutes(endTimeM);
+      endTimeDate.setSeconds(0);
+      endTimeDate.setMilliseconds(0);
+      if (timeNow >= startTimeDate && timeNow <= endTimeDate) {
+        return {
+          timeUntil: -1,
+          startTime,
+          endTime,
+        };
+      }
+      if (timeNow < startTimeDate) {
+        return {
+          timeUntil: startTimeDate.getTime() - timeNow.getTime(),
+          startTime,
+          endTime,
+        };
+      }
+    }
+    return { timeUntil: -1, startTime: "00:00", endTime: "00:00" };
+
+    /*const NOW = new Date();
     // will return 0 if in load shedding // will return -1 if no load shedding
     let list = JSON.parse(
       readFileSync(this.loadSheddingFile).toString()
@@ -219,6 +347,6 @@ export class loadshedding {
       timeUntil: -1,
       startTime: "00:00",
       endTime: "00:00",
-    };
+    };*/
   }
 }

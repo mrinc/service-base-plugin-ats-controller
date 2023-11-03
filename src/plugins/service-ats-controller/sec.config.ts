@@ -4,6 +4,9 @@ import { existsSync, writeFileSync } from "fs";
 export interface MyPluginConfig {
   loadsheddingFile: string;
   startGeniMinutesBeforeLoadShedding: number;
+  espAPIKey: string;
+  espAPILocation: string;
+  espAPILimitPerDay: number;
   /*sendGeniSMS: {
     to: string;
     apiKey: string;
@@ -34,12 +37,24 @@ export class Config extends SecConfig<MyPluginConfig> {
         existingConfig.startGeniMinutesBeforeLoadShedding !== undefined
           ? existingConfig.startGeniMinutesBeforeLoadShedding
           : 5,
+      espAPIKey:
+        existingConfig.espAPIKey !== undefined
+          ? existingConfig.espAPIKey
+          : "espAPIKey",
+      espAPILocation:
+        existingConfig.espAPILocation !== undefined
+          ? existingConfig.espAPILocation
+          : "espAPILocation",
+      espAPILimitPerDay:
+        existingConfig.espAPILimitPerDay !== undefined
+          ? existingConfig.espAPILimitPerDay
+          : 50,
     };
-    if (!existsSync(config.loadsheddingFile))
+    /*if (!existsSync(config.loadsheddingFile))
       writeFileSync(
         config.loadsheddingFile,
         '{ "schedule": [], "currentStage": 0 }'
-      );
+      );*/
     return config;
   }
 }
