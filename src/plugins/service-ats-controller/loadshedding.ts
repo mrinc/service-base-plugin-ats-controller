@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from "fs";
+//import { readFileSync, writeFileSync } from "fs";
 
 export interface LSConfigTimes {
   // times are MS from 00:00

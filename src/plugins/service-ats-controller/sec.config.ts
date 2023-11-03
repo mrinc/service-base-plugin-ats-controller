@@ -1,5 +1,5 @@
 import { SecConfig } from "@bettercorp/service-base";
-import { existsSync, writeFileSync } from "fs";
+//import { existsSync, writeFileSync } from "fs";
 
 export interface MyPluginConfig {
   loadsheddingFile: string;
