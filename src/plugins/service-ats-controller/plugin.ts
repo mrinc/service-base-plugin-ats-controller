@@ -336,7 +336,7 @@ export class Service extends ServicesBase<
       let timeBeforeLSH = Math.floor(timeBeforeLS / 60); // h
 
       self.loadSheddingState.startGeniMinLSCounter =
-        timeBeforeLS - self.loadSheddingState.startGeniMinBeforeLS;
+        Math.round(timeBeforeLS - self.loadSheddingState.startGeniMinBeforeLS);
       if (self.loadSheddingState.startGeniMinLSCounter < 0)
         self.loadSheddingState.startGeniMinLSCounter = -2;
 
@@ -372,8 +372,9 @@ export class Service extends ServicesBase<
       }
 
       self.loadSheddingState.timeHUntilNextLS = timeBeforeLSH;
-      self.loadSheddingState.timeMUntilNextLS =
-        timeBeforeLS - timeBeforeLSH * 60;
+      self.loadSheddingState.timeMUntilNextLS = Math.round(
+        timeBeforeLS - timeBeforeLSH * 60
+      );
     }
 
     let timeBeforeEstimated =

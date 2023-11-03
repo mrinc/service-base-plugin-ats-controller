@@ -124,8 +124,7 @@ export class loadshedding {
         this.ESPLSStatus = statusreq.data as ESPStatus;
         self.log.warn("SYNCING ESP DETAILS : OK");
         this.handleLog(
-          "Synced ESP LS Details - known stage: " +
-            this.ESPLSStatus.status.eskom.stage
+          "Synced ESP known stage: " + this.ESPLSStatus.status.eskom.stage
         );
       })
       .catch((error) => {
@@ -191,6 +190,7 @@ export class loadshedding {
     }
     if (this.knownStage !== stage) {
       this.handleLog("Load Shedding Stage: " + stage);
+      this.knownStage = stage;
     }
     return stage;
     /*let list = JSON.parse(
