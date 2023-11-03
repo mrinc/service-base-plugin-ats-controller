@@ -1,4 +1,5 @@
 //import { readFileSync, writeFileSync } from "fs";
+import { IPluginLogger } from "@bettercorp/service-base";
 import axios from "axios";
 import * as moment from "moment";
 
@@ -69,6 +70,7 @@ export interface ESPStatusNextStage {
 // monday - 1
 // saturday - 6
 export class loadshedding {
+  log!: IPluginLogger;
   public ESPLSAreaStatus: ESPAreaStatus | null = null;
   public ESPLSStatus: ESPStatus | null = null;
   private handleLog = (value: string) => {};
@@ -83,7 +85,8 @@ export class loadshedding {
   private ESPRequestsPerDay = 50;
 
   private triggerESPUpdate() {
-    console.warn("SYNCING ESP DETAILS");
+    this.log.info("SYNCING ESP DETAILS");
+    const self = this;
     axios
       .get(
         "https://developer.sepush.co.za/business/2.0/area?id=" +
@@ -96,10 +99,10 @@ export class loadshedding {
       )
       .then(async (resp) => {
         if (resp.status !== 200) {
-          console.error("ERROR GETTING LS SCHED", resp.data);
+          self.log.error("ERROR GETTING LS SCHED", resp.data);
           return;
         }
-        console.warn("SYNCING ESP DETAILS : GOT 1");
+        self.log.warn("SYNCING ESP DETAILS : GOT 1");
         const statusreq = await axios.get(
           "https://developer.sepush.co.za/business/2.0/status",
           {
@@ -108,20 +111,20 @@ export class loadshedding {
             },
           }
         );
-        console.warn("SYNCING ESP DETAILS : GOT 2");
+        self.log.warn("SYNCING ESP DETAILS : GOT 2");
         let result = resp.data;
-        console.log(statusreq.data);
-        console.log(resp.data);
+        self.log.debug(statusreq.data);
+        self.log.debug(resp.data);
         for (let index = 0; index < result.events.length; index++) {
           result.events[index].start = new Date(result.events[index].start);
           result.events[index].end = new Date(result.events[index].end);
         }
         this.ESPLSAreaStatus = result as ESPAreaStatus;
         this.ESPLSStatus = statusreq.data as ESPStatus;
-        console.warn("SYNCING ESP DETAILS : OK");
+        self.log.warn("SYNCING ESP DETAILS : OK");
       })
       .catch((error) => {
-        this.handleLog("Error getting load shedding status: " + error);
+        self.log.error("Error getting load shedding status: ", error);
         this.ESPLSAreaStatus = null;
       });
   }
@@ -130,8 +133,11 @@ export class loadshedding {
     /*lsFile: string, */ handleLog: { (value: string): void },
     ESPAPIKey: string,
     LoadSheddingESPID: string,
-    ESPRequestsPerDay: number
+    ESPRequestsPerDay: number,
+    log: IPluginLogger
   ) {
+    this.log = log;
+    this.log.info("INIT ESP LS API");
     this.ESPAPIKey = ESPAPIKey;
     this.LoadSheddingESPID = LoadSheddingESPID;
     this.ESPRequestsPerDay = ESPRequestsPerDay;
@@ -142,7 +148,7 @@ export class loadshedding {
     // Calculate the interval between each request
     const intervalBetweenEachRequest =
       (totalMillisecondsInADay / (this.ESPRequestsPerDay - 4)) * 2;
-    console.log(
+    this.log.info(
       "Running LS ESP Interval at: " +
         Math.round(intervalBetweenEachRequest / 1000) +
         "s"
@@ -166,8 +172,8 @@ export class loadshedding {
     writeFileSync(this.loadSheddingFile, JSON.stringify(list));*/
   }
   getStage() {
-    if (this.ESPLSAreaStatus === null) return -1;
-    if (this.ESPLSStatus === null) return -2;
+    if (this.ESPLSAreaStatus === null) return -3;
+    if (this.ESPLSStatus === null) return -4;
     let stage = 0;
     for (let lsevent of this.ESPLSAreaStatus.events) {
       if (new Date() >= lsevent.start && new Date() <= lsevent.end) {
@@ -207,7 +213,7 @@ export class loadshedding {
     } | null = null;
     for (let stage of stages) {
       let thisStageInfo = this.getTimeUntilNextLoadSheddingDetailed(stage);
-      console.log("stage: " + stage, thisStageInfo);
+      this.log.info("stage: " + stage, thisStageInfo);
       if (thisStageInfo.timeUntil > 0) {
         if (thisStageInfo.timeUntil < maxUntilLoadSheddingTimeUntil) {
           maxUntilLoadSheddingTimeUntil = thisStageInfo.timeUntil;
@@ -248,7 +254,11 @@ export class loadshedding {
       return { timeUntil: -1, startTime: "00:00", endTime: "00:00" };
     let activeStage = stage ?? this.getStage();
     if (activeStage <= 0)
-      return { timeUntil: -2, startTime: "00:00", endTime: "00:00" };
+      return {
+        timeUntil: this.getStage(),
+        startTime: "00:00",
+        endTime: "00:00",
+      };
 
     for (let day = 0; day < this.ESPLSAreaStatus.schedule.days.length; day++) {
       let scheds =

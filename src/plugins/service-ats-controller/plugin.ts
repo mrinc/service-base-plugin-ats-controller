@@ -294,7 +294,8 @@ export class Service extends ServicesBase<
       },
       (await this.getPluginConfig()).espAPIKey,
       (await this.getPluginConfig()).espAPILocation,
-      (await this.getPluginConfig()).espAPILimitPerDay
+      (await this.getPluginConfig()).espAPILimitPerDay,
+      this.log
     );
     this.loadSheddingState.startGeniMinBeforeLS = (
       await this.getPluginConfig()
