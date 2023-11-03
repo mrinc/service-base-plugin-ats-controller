@@ -97,7 +97,7 @@ export class Web {
           });
         }
         reply.header("content-type", "text/html");
-        let lines: Array<string> = ["<h1>ATS System</h1>", "<br />"];
+        let lines: Array<string> = ["<h1>ATS System v2</h1>", "<br />"];
 
         const knownStates = self.knownStates as any;
         lines.push(
