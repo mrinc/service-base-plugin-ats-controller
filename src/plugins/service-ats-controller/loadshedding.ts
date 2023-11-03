@@ -83,6 +83,7 @@ export class loadshedding {
   private ESPRequestsPerDay = 50;
 
   private triggerESPUpdate() {
+    console.warn("SYNCING ESP DETAILS");
     axios
       .get(
         "https://developer.sepush.co.za/business/2.0/area?id=" +
@@ -98,6 +99,7 @@ export class loadshedding {
           console.error("ERROR GETTING LS SCHED", resp.data);
           return;
         }
+        console.warn("SYNCING ESP DETAILS : GOT 1");
         const statusreq = await axios.get(
           "https://developer.sepush.co.za/business/2.0/status",
           {
@@ -106,13 +108,17 @@ export class loadshedding {
             },
           }
         );
+        console.warn("SYNCING ESP DETAILS : GOT 2");
         let result = resp.data;
+        console.log(statusreq.data);
+        console.log(resp.data);
         for (let index = 0; index < result.events.length; index++) {
           result.events[index].start = new Date(result.events[index].start);
           result.events[index].end = new Date(result.events[index].end);
         }
         this.ESPLSAreaStatus = result as ESPAreaStatus;
         this.ESPLSStatus = statusreq.data as ESPStatus;
+        console.warn("SYNCING ESP DETAILS : OK");
       })
       .catch((error) => {
         this.handleLog("Error getting load shedding status: " + error);
@@ -160,8 +166,8 @@ export class loadshedding {
     writeFileSync(this.loadSheddingFile, JSON.stringify(list));*/
   }
   getStage() {
-    if (this.ESPLSAreaStatus === null) return 0;
-    if (this.ESPLSStatus === null) return 0;
+    if (this.ESPLSAreaStatus === null) return -1;
+    if (this.ESPLSStatus === null) return -2;
     let stage = 0;
     for (let lsevent of this.ESPLSAreaStatus.events) {
       if (new Date() >= lsevent.start && new Date() <= lsevent.end) {
@@ -241,11 +247,12 @@ export class loadshedding {
     if (this.ESPLSAreaStatus === null)
       return { timeUntil: -1, startTime: "00:00", endTime: "00:00" };
     let activeStage = stage ?? this.getStage();
-    if (activeStage === 0)
+    if (activeStage <= 0)
       return { timeUntil: -2, startTime: "00:00", endTime: "00:00" };
 
     for (let day = 0; day < this.ESPLSAreaStatus.schedule.days.length; day++) {
-      let scheds = this.ESPLSAreaStatus.schedule.days[day].stages[activeStage - 1];
+      let scheds =
+        this.ESPLSAreaStatus.schedule.days[day].stages[activeStage - 1];
       if (scheds.length === 0) continue; //return { timeUntil: -3, startTime: "00:00", endTime: "00:00" };
       for (let sched of scheds) {
         let startTime = sched.split("-")[0];
