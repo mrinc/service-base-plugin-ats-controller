@@ -1,4 +1,5 @@
 //import { readFileSync, writeFileSync } from "fs";
+import axios from "axios";
 
 export interface LSConfigTimes {
   // times are MS from 00:00
@@ -46,7 +47,7 @@ export interface ESPAreaStatusDay {
 // monday - 1
 // saturday - 6
 export class loadshedding {
-  private ESPLSStatus: ESPAreaStatus | null = null;
+  public ESPLSStatus: ESPAreaStatus | null = null;
   private handleLog = (value: string) => {};
   /*private readonly loadSheddingFile: string;
   private states = {
@@ -59,22 +60,22 @@ export class loadshedding {
   private ESPRequestsPerDay = 50;
 
   private triggerESPUpdate() {
-    let myHeaders = new Headers();
-    myHeaders.append("token", this.ESPAPIKey);
-
-    let requestOptions = {
-      method: "GET",
-      headers: myHeaders,
-      redirect: "follow",
-    };
-
-    fetch(
-      "https://developer.sepush.co.za/business/2.0/area?id=" +
-        this.LoadSheddingESPID,
-      requestOptions as any
-    )
-      .then((response) => response.json())
-      .then((result) => {
+    axios
+      .get(
+        "https://developer.sepush.co.za/business/2.0/area?id=" +
+          this.LoadSheddingESPID,
+        {
+          headers: {
+            token: this.ESPAPIKey,
+          },
+        }
+      )
+      .then((resp) => {
+        if (resp.status !== 200) {
+          console.error("ERROR GETTING LS SCHED", resp.data);
+          return;
+        }
+        let result = resp.data;
         for (let index = 0; index < result.events.length; index++) {
           result.events[index].start = new Date(result.events[index].start);
           result.events[index].end = new Date(result.events[index].end);
