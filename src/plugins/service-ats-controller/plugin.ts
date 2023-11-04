@@ -287,6 +287,7 @@ export class Service extends ServicesBase<
   public override async init(): Promise<void> {
     //this.outputs.sendSms = await (await this.getPluginConfig()).sendGeniSMS;
     const self = this;
+    self.latestSystemBusyPoint = 'Starting boot: OK';
     this.loadShedding = new loadshedding(
       /*(await this.getPluginConfig()).loadsheddingFile,*/
       (value: string) => {
