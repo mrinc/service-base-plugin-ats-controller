@@ -125,9 +125,9 @@ export class loadshedding {
         this.ESPLSAreaStatus = result as ESPAreaStatus;
         this.ESPLSStatus = statusreq.data as ESPStatus;
         self.log.warn("SYNCING ESP DETAILS : OK");
-        this.handleLog(
+        /*this.handleLog(
           "Synced ESP known stage: " + this.ESPLSStatus.status.eskom.stage
-        );
+        );*/
         self.emitter.emit("updated");
       })
       .catch((error) => {
@@ -300,8 +300,16 @@ export class loadshedding {
           };
         }*/
         if (timeNow < startTimeDate) {
+          const timeUntil = startTimeDate - timeNow;
+          const timeUntilInMinutes = Math.round(timeUntil / 1000 / 60);
+          if ([60,45,30,15,5].indexOf(timeUntilInMinutes) >= 0) {
+            this.handleLog(
+              `Next load shedding: ${timeUntilInMinutes}min`
+            );
+          }
+
           return {
-            timeUntil: startTimeDate - timeNow,
+            timeUntil,
             startTime,
             endTime,
           };
