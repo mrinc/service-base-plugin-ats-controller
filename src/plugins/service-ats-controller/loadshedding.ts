@@ -257,6 +257,7 @@ export class loadshedding {
       this.states.nextSchedule = schedTime;
     }
   }*/
+  lastSentAlert: number = 0;
   getTimeUntilNextLoadSheddingDetailed(stage?: number): {
     timeUntil: number;
     startTime: string;
@@ -302,10 +303,10 @@ export class loadshedding {
         if (timeNow < startTimeDate) {
           const timeUntil = startTimeDate - timeNow;
           const timeUntilInMinutes = Math.round(timeUntil / 1000 / 60);
-          if ([60,45,30,15,5].indexOf(timeUntilInMinutes) >= 0) {
-            this.handleLog(
-              `Next load shedding: ${timeUntilInMinutes}min`
-            );
+          if ([60, 45, 30, 15, 5].indexOf(timeUntilInMinutes) >= 0) {
+            if (this.lastSentAlert !== timeUntilInMinutes)
+              this.handleLog(`Next load shedding: ${timeUntilInMinutes}min`);
+            else this.lastSentAlert = timeUntilInMinutes;
           }
 
           return {
