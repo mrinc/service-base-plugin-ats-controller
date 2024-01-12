@@ -21,6 +21,7 @@ export interface UPSInfo {
   // Alarm1?: string;
   // Humidity?: string;
   // Alarm2?: string;
+  lastUpdated: number;
 }
 async function fetchWithTimeout(
   input: RequestInfo | URL,
@@ -39,19 +40,29 @@ async function fetchWithTimeout(
   return response;
 }
 
+let lastUpdated = 0;
+let cachedData: UPSInfo = {} as any;
 export async function getUPSInfo(host: string): Promise<UPSInfo> {
-  const response = await fetchWithTimeout(
-    `${host}/cgi-bin/realInfo.cgi?sid=1.${Date.now()}`,
-    {
-      method: "GET",
-    },
-    1000
-  );
+  let lines: string[] = [];
+  try {
+    const response = await fetchWithTimeout(
+      `${host}/cgi-bin/realInfo.cgi?sid=1.${Date.now()}`,
+      {
+        method: "GET",
+      },
+      1000
+    );
 
-  const lines = (await response.text()).split("\n");
-  if (lines.length < 38) throw new Error("Invalid response from UPS");
+    lines = (await response.text()).split("\n");
+    if (lines.length < 38) throw new Error("Invalid response from UPS");
+  } catch (e) {
+    cachedData.lastUpdated = Date.now() - lastUpdated / 1000;
+    return cachedData;
+  }
 
+  lastUpdated = Date.now();
   let upsInfo: any = {
+    lastUpdated: 0,
     UPS_Mode: lines.splice(0, 1)[0].trim(),
     UPS_Temp: Number.parseInt(lines.splice(0, 1)[0].trim()) / 10,
     Auto_Reboot: lines.splice(0, 1)[0].trim() === "1",
@@ -87,6 +98,6 @@ export async function getUPSInfo(host: string): Promise<UPSInfo> {
     // Humidity: lines[24].trim() + " %",
     // Alarm2: lines[25].trim(),
   };
-
+  cachedData = upsInfo;
   return upsInfo;
 }
