@@ -3,7 +3,7 @@ import { Tools } from "@bettercorp/tools";
 import { fastify } from "@bettercorp/service-base-plugin-web-server";
 import { readFileSync } from "fs";
 import { join } from "path";
-import { getUPSInfo } from './UPSParser';
+import { getUPSInfo } from "./UPSParser";
 
 export class Web {
   private _fastify!: fastify;
@@ -98,7 +98,7 @@ export class Web {
           });
         }
         reply.header("content-type", "text/html");
-        let lines: Array<string> = ["<h1>ATS System v2</h1>", "<br />"];
+        let lines: Array<string> = ["<h1>ATS System v2.1</h1>", "<br />"];
 
         const knownStates = self.knownStates as any;
         lines.push(
@@ -225,33 +225,47 @@ export class Web {
         }
         lines.push("</div>");
 
-        if (await this.uSelf.UPSEndpoint() !== false) {
-          const endpoint = await this.uSelf.UPSEndpoint() as string;
+        if ((await this.uSelf.UPSEndpoint()) !== false) {
           lines.push('<div class="item">');
-          const upsStats = await getUPSInfo(endpoint);
           lines.push("<h5>UPS INFO</h5>");
-          for (let key of (Object.keys(upsStats) as Array<keyof typeof upsStats>)) {
-            let state: any = undefined;
-            if (Tools.isBoolean(upsStats[key])) {
-              state = `<div class="item-ball" style="background: ${
-                upsStats[key] == true ? "green" : "blue"
-              }"></div>`;
-            } else if (Tools.isNumber(upsStats[key])) {
-              state = upsStats[key].toString();
-              if (key.toLowerCase().indexOf('temp') >= 0) state += ' °C';
-              else if (key.toLowerCase().indexOf('voltage') >= 0) state += ' V';
-              else if (key.toLowerCase().indexOf('frequency') >= 0) state += ' Hz';
-              else if (key.toLowerCase().indexOf('time') >= 0) state += ' Min';
-              else if (key.toLowerCase().indexOf('capacity') >= 0 || key.toLowerCase().indexOf('level') >= 0) state += ' %';
-            } else {
-              state = upsStats[key];
-            }
+          try {
+            const endpoint = (await this.uSelf.UPSEndpoint()) as string;
+            const upsStats = await getUPSInfo(endpoint);
+            for (let key of Object.keys(upsStats) as Array<
+              keyof typeof upsStats
+            >) {
+              let state: any = undefined;
+              if (Tools.isBoolean(upsStats[key])) {
+                state = `<div class="item-ball" style="background: ${
+                  upsStats[key] == true ? "green" : "blue"
+                }"></div>`;
+              } else if (Tools.isNumber(upsStats[key])) {
+                state = upsStats[key].toString();
+                if (key.toLowerCase().indexOf("temp") >= 0) state += " °C";
+                else if (key.toLowerCase().indexOf("voltage") >= 0)
+                  state += " V";
+                else if (key.toLowerCase().indexOf("frequency") >= 0)
+                  state += " Hz";
+                else if (key.toLowerCase().indexOf("time") >= 0)
+                  state += " Min";
+                else if (
+                  key.toLowerCase().indexOf("capacity") >= 0 ||
+                  key.toLowerCase().indexOf("level") >= 0
+                )
+                  state += " %";
+              } else {
+                state = upsStats[key];
+              }
 
-            lines.push(
-              `<div class="litem"><b>${key}</b>: <span>${
-                state || "UNKNOWN"
-              }</span></div>`
-            );
+              lines.push(
+                `<div class="litem"><b>${key}</b>: <span>${
+                  state || "UNKNOWN"
+                }</span></div>`
+              );
+            }
+          } catch (exc) {
+            lines.push("<h6>* ERROR</h6>");
+            lines.push("<p>" + exc + "</p>");
           }
           lines.push("</div>");
         }

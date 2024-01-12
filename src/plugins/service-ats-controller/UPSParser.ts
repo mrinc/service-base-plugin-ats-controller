@@ -22,13 +22,30 @@ export interface UPSInfo {
   // Humidity?: string;
   // Alarm2?: string;
 }
+async function fetchWithTimeout(
+  input: RequestInfo | URL,
+  init?: RequestInit | undefined,
+  timeout: number = 1000
+) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+
+  const response = await fetch(input, {
+    ...init,
+    signal: controller.signal,
+  });
+  clearTimeout(id);
+
+  return response;
+}
 
 export async function getUPSInfo(host: string): Promise<UPSInfo> {
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     `${host}/cgi-bin/realInfo.cgi?sid=1.${Date.now()}`,
     {
       method: "GET",
-    }
+    },
+    500
   );
 
   const lines = (await response.text()).split("\n");
