@@ -241,13 +241,15 @@ export class Web {
                 }"></div>`;
               } else if (Tools.isNumber(upsStats[key])) {
                 state = upsStats[key].toString();
-                if (key.toLowerCase().indexOf("temp") >= 0) state += " °C";
+                if (key.toLowerCase().indexOf("temp") >= 0) state += " *C";
                 else if (key.toLowerCase().indexOf("voltage") >= 0)
                   state += " V";
                 else if (key.toLowerCase().indexOf("frequency") >= 0)
                   state += " Hz";
                 else if (key.toLowerCase().indexOf("time") >= 0)
                   state += " Min";
+                else if (key.toLowerCase().indexOf("current") >= 0)
+                  state += " A";
                 else if (
                   key.toLowerCase().indexOf("capacity") >= 0 ||
                   key.toLowerCase().indexOf("level") >= 0
@@ -258,8 +260,8 @@ export class Web {
               }
 
               lines.push(
-                `<div class="litem"><b>${key}</b>: <span>${
-                  state || "UNKNOWN"
+                `<div class="litem"><b>${key.replace(/_/g, " ")}</b>: <span>${
+                  state || ""
                 }</span></div>`
               );
             }

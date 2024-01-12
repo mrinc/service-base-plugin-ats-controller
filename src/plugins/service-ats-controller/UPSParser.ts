@@ -45,10 +45,12 @@ export async function getUPSInfo(host: string): Promise<UPSInfo> {
     {
       method: "GET",
     },
-    500
+    1000
   );
 
   const lines = (await response.text()).split("\n");
+  if (lines.length < 38) throw new Error("Invalid response from UPS");
+
   let upsInfo: any = {
     UPS_Mode: lines.splice(0, 1)[0].trim(),
     UPS_Temp: Number.parseInt(lines.splice(0, 1)[0].trim()) / 10,
