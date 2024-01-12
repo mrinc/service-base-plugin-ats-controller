@@ -25,7 +25,7 @@ export interface UPSInfo {
 
 export async function getUPSInfo(host: string): Promise<UPSInfo> {
   const response = await fetch(
-    `http://${host}/cgi-bin/realInfo.cgi?sid=1.${Date.now()}`,
+    `${host}/cgi-bin/realInfo.cgi?sid=1.${Date.now()}`,
     {
       method: "GET",
     }
