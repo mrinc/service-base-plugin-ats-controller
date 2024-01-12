@@ -250,6 +250,7 @@ export class Web {
                   state += " Min";
                 else if (key.toLowerCase().indexOf("current") >= 0)
                   state += " A";
+                else if (key === "lastUpdated") state += " s";
                 else if (
                   key.toLowerCase().indexOf("capacity") >= 0 ||
                   key.toLowerCase().indexOf("level") >= 0

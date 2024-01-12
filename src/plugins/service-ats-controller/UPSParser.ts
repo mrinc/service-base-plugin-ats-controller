@@ -56,7 +56,7 @@ export async function getUPSInfo(host: string): Promise<UPSInfo> {
     lines = (await response.text()).split("\n");
     if (lines.length < 38) throw new Error("Invalid response from UPS");
   } catch (e) {
-    cachedData.lastUpdated = Date.now() - lastUpdated / 1000;
+    cachedData.lastUpdated = (Date.now() - lastUpdated) / 1000;
     return cachedData;
   }
 
