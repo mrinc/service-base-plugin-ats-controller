@@ -96,6 +96,10 @@ export class Service extends ServicesBase<
   public outputs: Outputs;
   public inputs: Inputs;
   private web: Web;
+  public async UPSEndpoint(): Promise<string | false> {
+    if ((await this.getPluginConfig()).upsEndpoint === undefined) return false;
+    return (await this.getPluginConfig()).upsEndpoint as string;
+  }
   public get pluginCWD(): string {
     return this.pluginCwd;
   }
@@ -287,7 +291,7 @@ export class Service extends ServicesBase<
   public override async init(): Promise<void> {
     //this.outputs.sendSms = await (await this.getPluginConfig()).sendGeniSMS;
     const self = this;
-    self.latestSystemBusyPoint = 'Starting boot: OK';
+    self.latestSystemBusyPoint = "Starting boot: OK";
     this.loadShedding = new loadshedding(
       /*(await this.getPluginConfig()).loadsheddingFile,*/
       (value: string) => {

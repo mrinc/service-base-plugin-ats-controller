@@ -13,6 +13,7 @@ export interface MyPluginConfig {
     secret: string;
   } | null;*/
   logApiEndpoint?: string;
+  upsEndpoint?: string;
 }
 
 export class Config extends SecConfig<MyPluginConfig> {
@@ -49,6 +50,7 @@ export class Config extends SecConfig<MyPluginConfig> {
         existingConfig.espAPILimitPerDay !== undefined
           ? existingConfig.espAPILimitPerDay
           : 50,
+      upsEndpoint: existingConfig.upsEndpoint,
     };
     /*if (!existsSync(config.loadsheddingFile))
       writeFileSync(
