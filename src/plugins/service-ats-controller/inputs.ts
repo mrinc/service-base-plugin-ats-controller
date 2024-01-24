@@ -108,8 +108,13 @@ export class Inputs {
       }
     }, 1000);
   }
+  private DEBOUNCE_DURATION = 1000; // 1 second debounce period
+  private debounceTimer?: NodeJS.Timeout;
   public dispose() {
     clearInterval(this.counterTimer);
+    if (this.debounceTimer) {
+      clearTimeout(this.debounceTimer);
+    }
   }
   private async parseData(asString: string): Promise<any> {
     const self = this;
@@ -158,9 +163,11 @@ export class Inputs {
         let reWrittenAsString = Object.keys(outputKeyed)
           .map((x) => `${x}:${outputKeyed[x].power ? "1" : "0"}`)
           .join("|");
+        let changes = false;
         if (self.knownStates.lastRead != reWrittenAsString) {
           self.knownStates.lastRead = reWrittenAsString;
           self.handleLog(`Inputs: ${reWrittenAsString}`);
+          changes = true;
         }
         let outputKeyed2: IDictionary<ParsedStateItem> = {
           //P: rewritten[0],
@@ -178,8 +185,16 @@ export class Inputs {
         if (self.knownStates.lastRead2 != reWrittenAsString2) {
           self.knownStates.lastRead2 = reWrittenAsString2;
           self.handleLog(`Inputs: ${reWrittenAsString2}`);
+          changes = true;
         }
-        await self.handleParsedData(output);
+        if (changes) {
+          if (this.debounceTimer) {
+            clearTimeout(this.debounceTimer);
+          }
+          this.debounceTimer = setTimeout(async () => {
+            await self.handleParsedData(output);
+          }, this.DEBOUNCE_DURATION);
+        }
       }
       case "PING":
         {
