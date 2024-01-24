@@ -108,6 +108,7 @@ export class Inputs {
       }
     }, 1000);
   }
+  private DEBOUNCE_RECLEARS = 0;
   private DEBOUNCE_DURATION = 1000; // 1 second debounce period
   private debounceTimer?: NodeJS.Timeout;
   public dispose() {
@@ -187,13 +188,27 @@ export class Inputs {
           self.handleLog(`Inputs: ${reWrittenAsString2}`);
           changes = true;
         }
-        if (changes) {
-          if (this.debounceTimer) {
-            clearTimeout(this.debounceTimer);
+        if (self.DEBOUNCE_RECLEARS > 5) {
+          self.handleLog(`Inputs: FLAPPING ${self.DEBOUNCE_RECLEARS}`);
+        }
+        if (self.DEBOUNCE_RECLEARS > 10) {
+          self.handleLog(`Inputs: FORCE RESET`);
+          if (self.debounceTimer) {
+            clearTimeout(self.debounceTimer);
           }
-          this.debounceTimer = setTimeout(async () => {
+          self.DEBOUNCE_RECLEARS = 0;
+          changes = false;
+          await self.handleParsedData(output);
+        }
+        if (changes) {
+          if (self.debounceTimer) {
+            self.DEBOUNCE_RECLEARS++;
+            clearTimeout(self.debounceTimer);
+          }
+          self.debounceTimer = setTimeout(async () => {
+            self.DEBOUNCE_RECLEARS = 0;
             await self.handleParsedData(output);
-          }, this.DEBOUNCE_DURATION);
+          }, self.DEBOUNCE_DURATION);
         }
       }
       case "PING":
